@@ -40,7 +40,7 @@ except Exception:
     sr = None
 
 HOST = "0.0.0.0"
-PORT = 5000
+PORT = int(os.environ.get("PORT", "5000"))
 LOCAL_URL = f"http://127.0.0.1:{PORT}"
 BASE_DIR = Path(__file__).resolve().parent
 KNOWN_FACES_DIR = BASE_DIR / "known_faces"
@@ -2613,7 +2613,8 @@ def open_browser():
 
 if __name__ == "__main__":
     load_known_faces()
-    threading.Thread(target=open_browser, daemon=True).start()
+    if not os.environ.get("RENDER"):
+        threading.Thread(target=open_browser, daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), FridayHandler)
     print(f"FRIDAY browser app running at {LOCAL_URL}")
     print(f"Family Wi-Fi link: http://{get_local_ip()}:{PORT}")

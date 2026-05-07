@@ -1,0 +1,6 @@
+google-genai==1.69.0
+numpy==2.4.3
+opencv-python-headless==4.13.0.92
+python-dotenv==1.2.2
+requests==2.33.0
+SpeechRecognition==3.15.2
