@@ -1,0 +1,24 @@
+{
+  "owner_name": "Boss",
+  "wake_word": "friday",
+  "voice_profile_enabled": true,
+  "voice_profile_phrase": "i am the boss",
+  "face_lock_enabled": false,
+  "morning_websites": [
+    "https://google.com",
+    "https://youtube.com"
+  ],
+  "morning_apps": [],
+  "custom_commands": {
+    "study mode": [
+      "open google",
+      "open youtube",
+      "timer 1800"
+    ],
+    "privacy mode": [
+      "emergency mode"
+    ]
+  },
+  "notes": {},
+  "notifications": []
+}

@@ -1,0 +1,837 @@
+{
+  "owner": {
+    "wake_word": "friday",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [
+      {
+        "time": "15:08:37",
+        "text": "Focus session started for 25 minutes."
+      },
+      {
+        "time": "15:38:46",
+        "text": "Security alert: unknown person detected. Photo saved to captures/owner_security_20260408_153846.jpg."
+      },
+      {
+        "time": "15:38:46",
+        "text": "Security alert from You: unknown person detected. Photo saved to captures/owner_security_20260408_153846.jpg."
+      },
+      {
+        "time": "15:48:54",
+        "text": "Timer finished after 50 seconds."
+      },
+      {
+        "time": "15:31:16",
+        "text": "Study mode started."
+      },
+      {
+        "time": "15:31:22",
+        "text": "Focus session started for 25 minutes."
+      }
+    ],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [
+      {
+        "time": "21:26:16",
+        "role": "You",
+        "text": "show study tasks"
+      },
+      {
+        "time": "21:26:16",
+        "role": "Assistant",
+        "text": "You have no pending study tasks."
+      },
+      {
+        "time": "21:26:44",
+        "role": "You",
+        "text": "call mama"
+      },
+      {
+        "time": "21:26:44",
+        "role": "Assistant",
+        "text": "Calling mama at +994517797733."
+      },
+      {
+        "time": "21:26:53",
+        "role": "You",
+        "text": "call mama"
+      },
+      {
+        "time": "21:26:53",
+        "role": "Assistant",
+        "text": "Calling mama at +994517797733."
+      },
+      {
+        "time": "21:27:57",
+        "role": "You",
+        "text": "game mode"
+      },
+      {
+        "time": "21:27:57",
+        "role": "Assistant",
+        "text": "Game mode started."
+      },
+      {
+        "time": "21:28:40",
+        "role": "You",
+        "text": "privacy mode"
+      },
+      {
+        "time": "21:28:40",
+        "role": "Assistant",
+        "text": "Privacy mode enabled."
+      },
+      {
+        "time": "15:31:16",
+        "role": "You",
+        "text": "friday do me a favor and the name of study mode"
+      },
+      {
+        "time": "15:31:16",
+        "role": "Assistant",
+        "text": "Study mode started with a 25 minute focus session."
+      },
+      {
+        "time": "15:31:22",
+        "role": "You",
+        "text": "it started with a 25-minute focus session"
+      },
+      {
+        "time": "15:31:22",
+        "role": "Assistant",
+        "text": "Focus session started for 25 minutes."
+      },
+      {
+        "time": "15:31:36",
+        "role": "You",
+        "text": "thanks"
+      },
+      {
+        "time": "15:31:36",
+        "role": "Assistant",
+        "text": "I did not fully understand \"thanks\" yet. Try one of these: open google, morning mode, what time is it, find my phone."
+      },
+      {
+        "time": "15:31:46",
+        "role": "You",
+        "text": "what time is it find my phone"
+      },
+      {
+        "time": "15:31:46",
+        "role": "Assistant",
+        "text": "Current time: 15:31:46"
+      },
+      {
+        "time": "15:31:52",
+        "role": "You",
+        "text": "15 hours 31 minutes and 46"
+      },
+      {
+        "time": "15:31:52",
+        "role": "Assistant",
+        "text": "I did not fully understand \"15 hours 31 minutes and 46\" yet. Try one of these: open google, morning mode, what time is it, find my phone."
+      }
+    ],
+    "activity_log": [],
+    "tutorial_seen": true,
+    "event_stream": [
+      {
+        "id": "1775893001142427600",
+        "time": "11:36:41",
+        "kind": "phone-alert",
+        "text": "Find my phone alert sent to this device.",
+        "target_client": "mobile",
+        "target_device": "210091116AG",
+        "speak": true,
+        "alarm": true,
+        "warning": true,
+        "start_recording": false,
+        "start_phone_viewing": false
+      }
+    ],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 1775648326.2788854
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": true,
+      "minutes": 25,
+      "started_at": "15:31:22"
+    },
+    "family_presence": {
+      "state": "home",
+      "updated_at": "21:25:04",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "15:39:04",
+      "battery": "100%",
+      "charging": "yes",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 OPR/129.0.0.0",
+      "page": "closing",
+      "last_event": "Phone page closing."
+    },
+    "preferred_phone_device": "210091116AG"
+  },
+  "senan": {
+    "wake_word": "jarvis",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [],
+    "activity_log": [],
+    "tutorial_seen": false,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  },
+  "nazile": {
+    "wake_word": "baby",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [],
+    "activity_log": [],
+    "tutorial_seen": false,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  },
+  "vusale": {
+    "wake_word": "kenan",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [],
+    "activity_log": [],
+    "tutorial_seen": true,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  },
+  "novruz": {
+    "wake_word": "zehra",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [
+      {
+        "time": "19:23:31",
+        "role": "You",
+        "text": "open google"
+      },
+      {
+        "time": "19:23:31",
+        "role": "Assistant",
+        "text": "Google acilir."
+      },
+      {
+        "time": "19:23:36",
+        "role": "You",
+        "text": "take screenshot"
+      },
+      {
+        "time": "19:23:37",
+        "role": "Assistant",
+        "text": "Ekran sekli captures/screenshot_20260331_192336.png olaraq saxlanildi."
+      },
+      {
+        "time": "19:23:39",
+        "role": "You",
+        "text": "take screenshot"
+      },
+      {
+        "time": "19:23:39",
+        "role": "Assistant",
+        "text": "Ekran sekli captures/screenshot_20260331_192339.png olaraq saxlanildi."
+      }
+    ],
+    "activity_log": [],
+    "tutorial_seen": false,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  },
+  "zehra": {
+    "wake_word": "siri",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [],
+    "activity_log": [
+      {
+        "time": "16:17:05",
+        "text": "Hesaba daxil oldu."
+      }
+    ],
+    "tutorial_seen": true,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  },
+  "arzu": {
+    "wake_word": "niko",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "messages": [
+      {
+        "time": "19:45:09",
+        "role": "You",
+        "text": "niko"
+      },
+      {
+        "time": "19:45:09",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko"
+      },
+      {
+        "time": "19:45:46",
+        "role": "You",
+        "text": "niko"
+      },
+      {
+        "time": "19:45:46",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko"
+      },
+      {
+        "time": "19:45:46",
+        "role": "You",
+        "text": "niko"
+      },
+      {
+        "time": "19:45:46",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko"
+      },
+      {
+        "time": "19:45:51",
+        "role": "You",
+        "text": "privacy mode"
+      },
+      {
+        "time": "19:45:52",
+        "role": "Assistant",
+        "text": "Mexfilik rejimi aktivdir."
+      },
+      {
+        "time": "17:02:28",
+        "role": "You",
+        "text": "open goggle"
+      },
+      {
+        "time": "17:02:28",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: open goggle"
+      },
+      {
+        "time": "17:02:29",
+        "role": "You",
+        "text": "open goggle"
+      },
+      {
+        "time": "17:02:29",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: open goggle"
+      },
+      {
+        "time": "17:03:53",
+        "role": "You",
+        "text": "niko va\u00e7\u00e7aba gir"
+      },
+      {
+        "time": "17:03:53",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko va\u00e7\u00e7aba gir"
+      },
+      {
+        "time": "17:04:05",
+        "role": "You",
+        "text": "niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:05",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:06",
+        "role": "You",
+        "text": "niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:06",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:07",
+        "role": "You",
+        "text": "niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:07",
+        "role": "Assistant",
+        "text": "Komanda qebul olundu: niko ba\u00e7\u00e7a ba gir"
+      }
+    ],
+    "activity_log": [
+      {
+        "time": "16:55:18",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "19:44:54",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "19:45:09",
+        "text": "Command: niko"
+      },
+      {
+        "time": "19:45:46",
+        "text": "Command: niko"
+      },
+      {
+        "time": "19:45:46",
+        "text": "Command: niko"
+      },
+      {
+        "time": "19:45:51",
+        "text": "Command: privacy mode"
+      },
+      {
+        "time": "15:50:33",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "16:06:41",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "16:59:47",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "17:00:46",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "17:02:10",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "17:02:28",
+        "text": "Command: open goggle"
+      },
+      {
+        "time": "17:02:29",
+        "text": "Command: open goggle"
+      },
+      {
+        "time": "17:03:00",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "17:03:22",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "17:03:34",
+        "text": "Hesaba daxil oldu."
+      },
+      {
+        "time": "17:03:53",
+        "text": "Command: niko va\u00e7\u00e7aba gir"
+      },
+      {
+        "time": "17:04:05",
+        "text": "Command: niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:06",
+        "text": "Command: niko ba\u00e7\u00e7a ba gir"
+      },
+      {
+        "time": "17:04:07",
+        "text": "Command: niko ba\u00e7\u00e7a ba gir"
+      }
+    ],
+    "tutorial_seen": true,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  },
+  "qadir": {
+    "wake_word": "senan",
+    "memory": {},
+    "custom_commands": {
+      "chill mode": "open spotify",
+      "focus mode": "study mode"
+    },
+    "notifications": [],
+    "messages": [
+      {
+        "time": "13:32:10",
+        "role": "You",
+        "text": "download mp4 https://www.facebook.com/share/r/1cgnauh8eg/?mibextid=wwxifr"
+      },
+      {
+        "time": "13:32:10",
+        "role": "Assistant",
+        "text": "Birbasa .mp4 linki istifade et."
+      },
+      {
+        "time": "13:32:12",
+        "role": "You",
+        "text": "download mp4 https://www.facebook.com/share/r/1cgnauh8eg/?mibextid=wwxifr"
+      },
+      {
+        "time": "13:32:12",
+        "role": "Assistant",
+        "text": "Birbasa .mp4 linki istifade et."
+      }
+    ],
+    "activity_log": [],
+    "security_mode": false,
+    "last_person": {
+      "status": "unknown",
+      "name": "",
+      "present": false
+    },
+    "tutorial_seen": true,
+    "event_stream": [],
+    "security_state": {
+      "last_status": "unknown",
+      "last_name": "",
+      "last_alert_at": 0
+    },
+    "study_tasks": [],
+    "study_sessions": [],
+    "focus_session": {
+      "active": false,
+      "minutes": 0,
+      "started_at": ""
+    },
+    "family_presence": {
+      "state": "unknown",
+      "updated_at": "",
+      "note": ""
+    },
+    "family_board": [
+      {
+        "time": "15:47:28",
+        "author": "You",
+        "text": "You is now home."
+      },
+      {
+        "time": "21:25:04",
+        "author": "You",
+        "text": "You is now home."
+      }
+    ],
+    "phone_status": {
+      "updated_at": "",
+      "battery": "",
+      "charging": "",
+      "device": "",
+      "page": "offline",
+      "last_event": ""
+    },
+    "preferred_phone_device": ""
+  }
+}

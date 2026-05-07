@@ -1,0 +1,66 @@
+{
+  "owner": {
+    "display_name": "You",
+    "assistant_name": "F.R.I.D.A.Y.",
+    "password": "fy",
+    "language": "en",
+    "banned": false,
+    "is_admin": true
+  },
+  "senan": {
+    "display_name": "Senan",
+    "assistant_name": "Jarvis",
+    "password": "JS",
+    "language": "en",
+    "banned": false,
+    "is_admin": false
+  },
+  "nazile": {
+    "display_name": "Nazile",
+    "assistant_name": "Baby",
+    "password": "by",
+    "language": "az",
+    "banned": true,
+    "is_admin": false
+  },
+  "vusale": {
+    "display_name": "Vusale",
+    "assistant_name": "Kenan",
+    "password": "Kn",
+    "language": "az",
+    "banned": false,
+    "is_admin": false
+  },
+  "novruz": {
+    "display_name": "Novruz",
+    "assistant_name": "Zehra",
+    "password": "Za",
+    "language": "az",
+    "banned": false,
+    "is_admin": false
+  },
+  "zehra": {
+    "display_name": "Zehra",
+    "assistant_name": "Siri",
+    "password": "sr",
+    "language": "az",
+    "banned": false,
+    "is_admin": false
+  },
+  "arzu": {
+    "display_name": "Arzu",
+    "assistant_name": "Niko",
+    "password": "No",
+    "language": "az",
+    "banned": false,
+    "is_admin": false
+  },
+  "qadir": {
+    "display_name": "Qadir",
+    "assistant_name": "Senan",
+    "password": "Sn",
+    "language": "az",
+    "banned": false,
+    "is_admin": false
+  }
+}
