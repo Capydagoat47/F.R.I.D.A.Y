@@ -3,6 +3,7 @@ import html
 import io
 import json
 import os
+import re
 import secrets
 import socket
 import subprocess
@@ -14,7 +15,9 @@ from datetime import datetime
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote_plus
+
+from friday_ai import ai_enabled, request_json
 
 try:
     import cv2
@@ -154,11 +157,11 @@ TEXT = {
         "mic": "Microphone",
         "talk": "Talk-to-FRIDAY",
         "voice_default": "Voice transcript will appear here.",
-        "placeholder": "Type a command...",
-        "waiting": "Waiting for command.",
+        "placeholder": "Ask F.R.I.D.A.Y. for anything...",
+        "waiting": "Ready for your next request.",
         "send": "Send Command",
-        "commands": "COMMANDS",
-        "commands_sub": "Every command works in short form and natural form.",
+        "commands": "Example Prompts",
+        "commands_sub": "Examples only. Ask naturally and F.R.I.D.A.Y. will try to turn it into actions.",
         "links": "Links",
         "local_link": "Local link",
         "family_link": "Family Wi-Fi link",
@@ -204,11 +207,11 @@ TEXT = {
         "mic": "Mikrofon",
         "talk": "Assistentle Danis",
         "voice_default": "Ses metni burada gorunecek.",
-        "placeholder": "Komanda yaz...",
-        "waiting": "Komanda gozlenilir.",
+        "placeholder": "F.R.I.D.A.Y.-dan istediyini iste...",
+        "waiting": "Yeni istek ucun hazirdir.",
         "send": "Komandani Gonder",
-        "commands": "COMMANDS",
-        "commands_sub": "Butun komandalar qisa ve tebii formada isleyir.",
+        "commands": "Numune Istekler",
+        "commands_sub": "Bunlar yalniz numunelerdir. Tebii danis, F.R.I.D.A.Y. onu hereketlere cevirmeye calisacaq.",
         "links": "Linkler",
         "local_link": "Lokal link",
         "family_link": "Aile Wi-Fi linki",
@@ -240,146 +243,40 @@ TEXT = {
 }
 
 COMMAND_SPECS = [
-    {"command": "open google", "natural": "friday do me a favor and open google"},
     {
-        "command": "open spotify",
-        "natural": "friday do me a favor and open spotify",
+        "command": "Open Spotify and start a 20 minute focus timer",
+        "natural": "launch spotify, set a timer for 20 minutes, and remind me to get back to work",
         "pc_only": True,
     },
     {
-        "command": "open discord",
-        "natural": "friday do me a favor and open discord",
+        "command": "Search the web without exact wording",
+        "natural": "search for tomorrow's weather in Baku and tell me what to wear",
+    },
+    {
+        "command": "Open sites and apps naturally",
+        "natural": "open github.com, launch discord, and then open the friday site",
         "pc_only": True,
     },
     {
-        "command": "open roblox",
-        "natural": "friday do me a favor and open roblox",
+        "command": "Use memory like a real assistant",
+        "natural": "remember my favorite game is minecraft and tell me later what you know about it",
+    },
+    {
+        "command": "Chain security actions together",
+        "natural": "turn on security mode, take a screenshot, and lock the pc",
         "pc_only": True,
     },
     {
-        "command": "open minecraft",
-        "natural": "friday do me a favor and open minecraft",
-        "pc_only": True,
+        "command": "Ask everyday questions",
+        "natural": "what time is it, what day is it, or give me the weekly forecast",
     },
     {
-        "command": "close app name",
-        "natural": "friday do me a favor and close discord",
-        "pc_only": True,
+        "command": "Mix reminders with contacts",
+        "natural": "message dad and remind me to study in 30 minutes",
     },
     {
-        "command": "shutdown pc",
-        "natural": "friday do me a favor and shutdown pc",
-        "pc_only": True,
-    },
-    {
-        "command": "restart pc",
-        "natural": "friday do me a favor and restart pc",
-        "pc_only": True,
-    },
-    {
-        "command": "take screenshot",
-        "natural": "friday do me a favor and take a screenshot",
-        "pc_only": True,
-    },
-    {"command": "take picture", "natural": "friday do me a favor and take picture"},
-    {
-        "command": "start recording",
-        "natural": "friday do me a favor and start recording",
-    },
-    {"command": "stop recording", "natural": "friday do me a favor and stop recording"},
-    {"command": "start scanning", "natural": "friday do me a favor and start scanning"},
-    {"command": "stop scanning", "natural": "friday do me a favor and stop scanning"},
-    {"command": "start timer 60", "natural": "friday do me a favor and start timer 60"},
-    {
-        "command": "remind me to study",
-        "natural": "friday do me a favor and remind me to study",
-    },
-    {
-        "command": "morning mode",
-        "natural": "friday do me a favor and start morning mode",
-    },
-    {"command": "study mode", "natural": "friday do me a favor and start study mode"},
-    {"command": "game mode", "natural": "friday do me a favor and start game mode"},
-    {
-        "command": "privacy mode",
-        "natural": "friday do me a favor and start privacy mode",
-    },
-    {
-        "command": "emergency mode",
-        "natural": "friday do me a favor and start emergency mode",
-    },
-    {
-        "command": "show notification summary",
-        "natural": "friday do me a favor and show notification summary",
-    },
-    {
-        "command": "who is here",
-        "natural": "friday do me a favor and tell me who is here",
-    },
-    {
-        "command": "enable security mode",
-        "natural": "friday do me a favor and enable security mode",
-    },
-    {
-        "command": "disable security mode",
-        "natural": "friday do me a favor and disable security mode",
-    },
-    {"command": "enable lights", "natural": "friday do me a favor and enable lights"},
-    {"command": "disable lights", "natural": "friday do me a favor and disable lights"},
-    {"command": "lights on", "natural": "friday do me a favor and turn the lights on"},
-    {
-        "command": "lights off",
-        "natural": "friday do me a favor and turn the lights off",
-    },
-    {
-        "command": "enable phone viewing",
-        "natural": "friday do me a favor and enable phone viewing",
-    },
-    {
-        "command": "disable phone viewing",
-        "natural": "friday do me a favor and disable phone viewing",
-    },
-    {
-        "command": "open friday site",
-        "natural": "friday do me a favor and open friday site",
-    },
-    {
-        "command": "check friday site",
-        "natural": "friday do me a favor and check friday site",
-    },
-    {
-        "command": "remember favorite game is minecraft",
-        "natural": "friday do me a favor and remember favorite game is minecraft",
-    },
-    {
-        "command": "what do you remember about favorite game",
-        "natural": "friday do me a favor and what do you remember about favorite game",
-    },
-    {
-        "command": "set wake word to friday",
-        "natural": "friday do me a favor and set wake word to friday",
-    },
-    {"command": "call mama", "natural": "friday do me a favor and call mama"},
-    {"command": "message dad", "natural": "friday do me a favor and message dad"},
-    {
-        "command": "what time is it",
-        "natural": "friday do me a favor and tell me the time",
-    },
-    {"command": "say hello", "natural": "friday do me a favor and say hello"},
-    {
-        "command": "open custom command name",
-        "natural": "friday do me a favor and open custom command chill mode",
-    },
-    {
-        "command": "download mp4 https://example.com/video.mp4",
-        "natural": "friday do me a favor and download mp4 https://example.com/video.mp4",
-    },
-    {"command": "shutdown phone", "natural": "friday do me a favor and shutdown phone"},
-    {"command": "lock phone", "natural": "friday do me a favor and lock phone"},
-    {
-        "command": "lock pc",
-        "natural": "friday do me a favor and lock pc",
-        "pc_only": True,
+        "command": "Use FRIDAY like a browser co-pilot",
+        "natural": "open youtube, search for python tutorials, and save a reminder for later",
     },
 ]
 
@@ -421,6 +318,19 @@ APP_ALIASES = {
     "roblox": ["roblox"],
     "minecraft": ["minecraft"],
 }
+
+WEBSITE_ALIASES = {
+    "google": "https://google.com",
+    "youtube": "https://youtube.com",
+    "gmail": "https://mail.google.com",
+    "github": "https://github.com",
+    "chatgpt": "https://chatgpt.com",
+    "netflix": "https://netflix.com",
+    "classroom": "https://classroom.google.com",
+    "google classroom": "https://classroom.google.com",
+}
+
+PLAN_COMMAND_LIMIT = 4
 
 PUBLIC_URL_FILE_CANDIDATES = [BASE_DIR / "public_url.txt", BASE_DIR / "ngrok_url.txt"]
 
@@ -726,7 +636,9 @@ def render_activity_panel(user_id, lang):
 
 def render_abilities_panel(user_id, lang):
     abilities = [
-        "Family account login",
+        "Natural-language requests",
+        "AI command planning",
+        "Multi-step actions",
         "Camera and face status",
         "Typed commands",
         "Assistant voice replies",
@@ -738,12 +650,16 @@ def render_abilities_panel(user_id, lang):
     ]
     if user_id in {"owner", "senan"}:
         abilities.extend(["PC controls", "Screenshot tools", "Desktop app launchers"])
+    if not ai_enabled():
+        abilities.append("Fallback rule-based mode only until AI is configured")
     items = "".join(
         f'<div class="message-item">{html.escape(item)}</div>' for item in abilities
     )
     title = "What FRIDAY Can Do" if lang == "en" else "FRIDAY Ne Ede Biler"
     subtitle = (
-        "Current built-in abilities." if lang == "en" else "Hazirki daxili bacariqlar."
+        "Built-in abilities plus open-ended action planning."
+        if lang == "en"
+        else "Daxili bacariqlar ve aciq uclu hereket planlamasi."
     )
     return f'<section class="panel"><h2>{title}</h2><p class="sub">{subtitle}</p>{items}</section>'
 
@@ -785,14 +701,14 @@ def render_tutorial_panel(user_id, lang):
             else "3. Sekil cekmek, qeydiyyata baslamaq ve scan etmek ucun kamera hereketlerinden istifade et."
         ),
         (
-            "4. The COMMANDS section shows the commands your assistant understands."
+            "4. The Example Prompts section gives ideas, not limits."
             if lang == "en"
-            else "4. COMMANDS hissesi assistentinin bildiyi komandalarini gosterir."
+            else "4. Numune Istekler hissesi yalniz ideya verir, limit qoymur."
         ),
         (
-            "5. Type in the box anytime if voice is noisy."
+            "5. Ask naturally, even if your wording changes."
             if lang == "en"
-            else "5. Etraf sesli olsa, istenilen vaxt qutuda yazaraq istifade et."
+            else "5. Ifadeni deyissen bele tebii sekilde isteyini de."
         ),
     ]
     items = "".join(
@@ -1341,6 +1257,17 @@ def run_timer(user_id, seconds):
     threading.Thread(target=worker, daemon=True).start()
 
 
+def run_reminder(user_id, lang, message, seconds):
+    def worker():
+        time.sleep(seconds)
+        add_notification(
+            user_id,
+            localized(lang, f"Reminder: {message}.", f"Xatirlatma: {message}."),
+        )
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
 def family_public_link():
     public_url = get_public_url()
     return public_url or LOCAL_URL
@@ -1701,7 +1628,176 @@ def morning_mode_report(user_id, lang):
     )
 
 
-def execute_command(user_id, command_text):
+def humanize_seconds(seconds):
+    if seconds % 3600 == 0:
+        hours = seconds // 3600
+        return f"{hours} hour" if hours == 1 else f"{hours} hours"
+    if seconds % 60 == 0:
+        minutes = seconds // 60
+        return f"{minutes} minute" if minutes == 1 else f"{minutes} minutes"
+    return f"{seconds} seconds"
+
+
+def parse_duration_seconds(text):
+    lowered = (text or "").lower()
+    matches = re.findall(
+        r"(\d+)\s*(seconds?|secs?|second|sec|minutes?|mins?|minute|min|hours?|hrs?|hour|hr)\b",
+        lowered,
+    )
+    if matches:
+        total = 0
+        for value, unit in matches:
+            number = int(value)
+            if unit.startswith(("hour", "hr")):
+                total += number * 3600
+            elif unit.startswith(("minute", "min")):
+                total += number * 60
+            else:
+                total += number
+        return total or None
+    plain_number = re.search(r"(\d+)\b", lowered)
+    if plain_number:
+        return int(plain_number.group(1))
+    return None
+
+
+def looks_like_url(target):
+    if not target:
+        return False
+    if target.startswith(("http://", "https://")):
+        return True
+    return bool(re.match(r"^[a-z0-9][a-z0-9.-]+\.[a-z]{2,}([/?#].*)?$", target))
+
+
+def resolve_open_target(target):
+    cleaned = (target or "").strip().lower()
+    for prefix in ("website ", "site ", "the "):
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix) :].strip()
+    if cleaned in WEBSITE_ALIASES:
+        return WEBSITE_ALIASES[cleaned]
+    if looks_like_url(cleaned):
+        return cleaned if cleaned.startswith(("http://", "https://")) else f"https://{cleaned}"
+    return None
+
+
+def google_search_url(query):
+    return f"https://www.google.com/search?q={quote_plus(query)}"
+
+
+def run_open_request(raw_target, allow_pc_controls):
+    url_target = resolve_open_target(raw_target)
+    if url_target:
+        return open_target(url_target), url_target
+    cleaned = (raw_target or "").strip()
+    if not cleaned:
+        return False, ""
+    if not allow_pc_controls:
+        return open_target(google_search_url(cleaned)), google_search_url(cleaned)
+    if open_target(cleaned):
+        return True, cleaned
+    return open_target(google_search_url(cleaned)), google_search_url(cleaned)
+
+
+def combine_responses(responses):
+    seen = set()
+    combined = []
+    for response in responses:
+        text = (response or "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            combined.append(text)
+    return " ".join(combined)
+
+
+def plan_ai_commands(user_id, raw_command, lang, allow_pc_controls):
+    memory_keys = sorted(MEMORY.get(user_id, {}).get("memory", {}).keys())[:10]
+    contact_names = ", ".join(sorted(CONTACTS.keys()))
+    prompt = f"""
+You are the action planner for an Iron-Man-style assistant named F.R.I.D.A.Y.
+Return JSON only with this shape:
+{{
+  "reply": "short optional reply in {'English' if lang == 'en' else 'Azerbaijani'}",
+  "commands": ["canonical command 1", "canonical command 2"]
+}}
+
+Rules:
+- Use at most {PLAN_COMMAND_LIMIT} commands.
+- Only output commands that this assistant can actually execute.
+- If the request is conversational or unsupported, leave "commands" empty and put the answer in "reply".
+- Prefer direct actions over chatty replies.
+- Use PC-only commands only when allow_pc_controls is true.
+- Convert timer durations to seconds.
+- If the user wants a website, use "open <url or domain>" or "search for <query>".
+- If the user wants FRIDAY to say something out loud, use "say <text>".
+
+Allowed canonical commands:
+- open <url or app name>
+- search for <query>
+- close <app name>
+- lock pc
+- take screenshot
+- shutdown pc
+- restart pc
+- start timer <seconds>
+- remind me to <text>
+- set weather location to <location>
+- morning mode
+- study mode
+- game mode
+- privacy mode
+- emergency mode
+- show notification summary
+- who is here
+- enable security mode
+- disable security mode
+- lights on
+- lights off
+- open friday site
+- check friday site
+- remember <key> is <value>
+- what do you remember about <key>
+- set wake word to <word>
+- call <contact>
+- message <contact>
+- weather
+- what to wear
+- is it raining
+- is it snowing
+- sunrise
+- sunset
+- air quality
+- weekly forecast
+- school advice
+- what time is it
+- what day is it
+- say <text>
+
+Context:
+- allow_pc_controls: {json.dumps(allow_pc_controls)}
+- known contacts: {contact_names}
+- known memory keys: {", ".join(memory_keys) if memory_keys else "none"}
+- user request: {raw_command}
+""".strip()
+    payload, error = request_json(prompt)
+    if error or not isinstance(payload, dict):
+        return None
+    commands = []
+    for item in payload.get("commands", []):
+        if not isinstance(item, str):
+            continue
+        normalized = normalize_command(item)
+        if normalized:
+            commands.append(normalized)
+        if len(commands) >= PLAN_COMMAND_LIMIT:
+            break
+    reply = payload.get("reply", "")
+    if not isinstance(reply, str):
+        reply = ""
+    return {"commands": commands, "reply": reply.strip()}
+
+
+def execute_direct_command(user_id, command_text):
     user = USERS[user_id]
     lang = user["language"]
     cmd = normalize_command(command_text)
@@ -1709,13 +1805,19 @@ def execute_command(user_id, command_text):
     allow_pc_controls = user_id in {"owner", "senan"}
     if not cmd:
         return localized(lang, "No command received.", "Komanda alinmadi.")
-    if "open google" in cmd:
+    if cmd in {"help", "what can you do", "what are your abilities"}:
+        return localized(
+            lang,
+            "Ask naturally. I can open apps or websites, search the web, remember details, handle timers and reminders, manage security actions, answer time or weather questions, and chain multiple actions together.",
+            "Tebii sekilde iste. Men proqram ve sayt aça, internetde axtaris ede, melumat yadda saxlaye, taymer ve xatirlatma qura, tehlukesizlik hereketlerini idare ede, vaxt ve hava suallarini cavablaya, bir nece hereketi zencir kimi icra ede bilerem.",
+        )
+    if cmd in {"open google", "google"}:
         return (
             localized(lang, "Opening Google.", "Google acilir.")
             if open_target("https://google.com")
             else localized(lang, "Google could not be opened.", "Google acilmadi.")
         )
-    if "open spotify" in cmd:
+    if cmd in {"open spotify", "spotify"}:
         if not allow_pc_controls:
             return localized(
                 lang,
@@ -1727,7 +1829,7 @@ def execute_command(user_id, command_text):
             if launch_app("spotify")
             else localized(lang, "Spotify could not be opened.", "Spotify acilmadi.")
         )
-    if "open discord" in cmd:
+    if cmd in {"open discord", "discord"}:
         if not allow_pc_controls:
             return localized(
                 lang,
@@ -1739,7 +1841,7 @@ def execute_command(user_id, command_text):
             if launch_app("discord")
             else localized(lang, "Discord could not be opened.", "Discord acilmadi.")
         )
-    if "open roblox" in cmd:
+    if cmd in {"open roblox", "roblox"}:
         if not allow_pc_controls:
             return localized(
                 lang,
@@ -1751,7 +1853,7 @@ def execute_command(user_id, command_text):
             if launch_app("roblox")
             else localized(lang, "Roblox could not be opened.", "Roblox acilmadi.")
         )
-    if "open minecraft" in cmd:
+    if cmd in {"open minecraft", "minecraft"}:
         if not allow_pc_controls:
             return localized(
                 lang,
@@ -1867,17 +1969,28 @@ def execute_command(user_id, command_text):
             )
         return localized(lang, "MP4 download failed.", "MP4 yuklenmedi.")
     if cmd.startswith("start timer "):
-        try:
-            seconds = int(cmd.split()[-1])
-        except ValueError:
+        seconds = parse_duration_seconds(cmd.replace("start timer", "", 1))
+        if not seconds:
             return localized(
                 lang, "Timer value is invalid.", "Taymer deyeri yanlisdir."
             )
         run_timer(user_id, seconds)
         return localized(
             lang,
-            f"Timer started for {seconds} seconds.",
-            f"{seconds} saniyelik taymer basladi.",
+            f"Timer started for {humanize_seconds(seconds)}.",
+            f"{humanize_seconds(seconds)} ucun taymer basladi.",
+        )
+    if cmd.startswith("set a timer for "):
+        seconds = parse_duration_seconds(cmd.replace("set a timer for ", "", 1))
+        if not seconds:
+            return localized(
+                lang, "Timer value is invalid.", "Taymer deyeri yanlisdir."
+            )
+        run_timer(user_id, seconds)
+        return localized(
+            lang,
+            f"Timer started for {humanize_seconds(seconds)}.",
+            f"{humanize_seconds(seconds)} ucun taymer basladi.",
         )
     if cmd in {
         "weather",
@@ -1955,12 +2068,41 @@ def execute_command(user_id, command_text):
             f"School or work advice: {school_work_advice(lang, weather)}",
             f"Mekteb ve ya is ucun meslehet: {school_work_advice(lang, weather)}",
         )
-    if "remind me to study" in cmd:
+    if cmd.startswith("remind me to "):
+        reminder_text = cmd.split("remind me to ", 1)[1].strip()
+        seconds = None
+        if " in " in reminder_text:
+            possible_text, possible_delay = reminder_text.rsplit(" in ", 1)
+            parsed = parse_duration_seconds(possible_delay)
+            if parsed:
+                reminder_text = possible_text.strip()
+                seconds = parsed
+        if not reminder_text:
+            return localized(
+                lang,
+                "Please tell me what to remind you about.",
+                "Zehmet olmasa neyi xatirlatmali oldugumu yaz.",
+            )
+        if seconds:
+            run_reminder(user_id, lang, reminder_text, seconds)
+            return localized(
+                lang,
+                f"Reminder set for {humanize_seconds(seconds)}: {reminder_text}.",
+                f"{humanize_seconds(seconds)} ucun xatirlatma quruldu: {reminder_text}.",
+            )
         add_notification(
             user_id,
-            localized(lang, "Reminder: study time.", "Xatirlatma: ders vaxtidir."),
+            localized(
+                lang,
+                f"Reminder saved: {reminder_text}.",
+                f"Xatirlatma saxlanildi: {reminder_text}.",
+            ),
         )
-        return localized(lang, "Study reminder saved.", "Ders xatirlatmasi saxlanildi.")
+        return localized(
+            lang,
+            f"Reminder saved: {reminder_text}.",
+            f"Xatirlatma saxlanildi: {reminder_text}.",
+        )
     if "morning mode" in cmd:
         return morning_mode_report(user_id, lang)
     if cmd.startswith("set weather location to "):
@@ -2069,6 +2211,59 @@ def execute_command(user_id, command_text):
             f"FRIDAY site is online at {family_public_link()}",
             f"FRIDAY sayti aktivdir: {family_public_link()}",
         )
+    if "open custom command " in cmd:
+        command_name = cmd.split("open custom command ", 1)[1].strip()
+        mapped = data["custom_commands"].get(command_name)
+        return (
+            execute_command(user_id, mapped)
+            if mapped
+            else localized(
+                lang,
+                f'Custom command "{command_name}" was not found.',
+                f'"{command_name}" adli custom komanda tapilmadi.',
+            )
+        )
+    if cmd.startswith("search for "):
+        query = cmd.split("search for ", 1)[1].strip()
+        if not query:
+            return localized(
+                lang,
+                "Please tell me what to search for.",
+                "Zehmet olmasa ne axtarmali oldugumu yaz.",
+            )
+        return (
+            localized(lang, f"Searching for {query}.", f"{query} ucun axtaris edilir.")
+            if open_target(google_search_url(query))
+            else localized(lang, "Search could not be opened.", "Axtaris acilmadi.")
+        )
+    if cmd.startswith("open "):
+        target = cmd.split("open ", 1)[1].strip()
+        if not target:
+            return localized(
+                lang,
+                "Please tell me what to open.",
+                "Zehmet olmasa neyi acmali oldugumu yaz.",
+            )
+        opened, _ = run_open_request(target, allow_pc_controls)
+        if opened:
+            return localized(
+                lang,
+                f"Opening {target}.",
+                f"{target} acilir.",
+            )
+        return localized(
+            lang,
+            f"I could not open {target}.",
+            f"{target} acilmadi.",
+        )
+    if cmd.startswith("launch "):
+        return execute_direct_command(user_id, f"open {cmd.split('launch ', 1)[1]}")
+    if cmd.startswith("run "):
+        return execute_direct_command(user_id, f"open {cmd.split('run ', 1)[1]}")
+    if cmd.startswith("start ") and not cmd.startswith(
+        ("start timer", "start scanning", "start recording")
+    ):
+        return execute_direct_command(user_id, f"open {cmd.split('start ', 1)[1]}")
     if "remember " in cmd and " is " in cmd:
         left, right = cmd.replace("remember ", "", 1).split(" is ", 1)
         key = left.strip()
@@ -2133,23 +2328,20 @@ def execute_command(user_id, command_text):
             f"Current time: {time.strftime('%H:%M:%S')}",
             f"Cari vaxt: {time.strftime('%H:%M:%S')}",
         )
+    if cmd in {"what day is it", "what date is it"}:
+        return localized(
+            lang,
+            f"Today is {time.strftime('%A, %d %B %Y')}.",
+            f"Bugun {time.strftime('%A, %d %B %Y')}.",
+        )
+    if cmd.startswith("say "):
+        text = cmd.split("say ", 1)[1].strip()
+        return text or localized(lang, "What should I say?", "Neyi deymeliyem?")
     if "say hello" in cmd or "hello friday" in cmd:
         return localized(
             lang,
             f"Hello {user['display_name']}. {user['assistant_name']} is online.",
             f"Salam {user['display_name']}. {user['assistant_name']} hazirdir.",
-        )
-    if "open custom command " in cmd:
-        command_name = cmd.split("open custom command ", 1)[1].strip()
-        mapped = data["custom_commands"].get(command_name)
-        return (
-            execute_command(user_id, mapped)
-            if mapped
-            else localized(
-                lang,
-                f'Custom command "{command_name}" was not found.',
-                f'"{command_name}" adli custom komanda tapilmadi.',
-            )
         )
     if "shutdown phone" in cmd:
         return localized(
@@ -2161,7 +2353,35 @@ def execute_command(user_id, command_text):
         return localized(
             lang, "Phone lock is not configured yet.", "Telefon kilidi hele qurulmayib."
         )
-    return localized(lang, f"Command received: {cmd}", f"Komanda qebul olundu: {cmd}")
+    return None
+
+
+def execute_command(user_id, command_text, allow_ai=True):
+    user = USERS[user_id]
+    lang = user["language"]
+    cmd = normalize_command(command_text)
+    allow_pc_controls = user_id in {"owner", "senan"}
+    direct_result = execute_direct_command(user_id, cmd)
+    if direct_result is not None:
+        return direct_result
+    if allow_ai:
+        plan = plan_ai_commands(user_id, command_text, lang, allow_pc_controls)
+        if plan:
+            planned_responses = []
+            for planned_command in plan["commands"]:
+                response = execute_command(user_id, planned_command, allow_ai=False)
+                if response is not None:
+                    planned_responses.append(response)
+            combined = combine_responses(planned_responses)
+            if combined:
+                return combined
+            if plan["reply"]:
+                return plan["reply"]
+    return localized(
+        lang,
+        "I heard you, but I do not know how to do that yet.",
+        "Seni esidirem, amma bunu hele ede bilmirem.",
+    )
 
 
 class FridayHandler(BaseHTTPRequestHandler):

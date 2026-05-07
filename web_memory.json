@@ -1,7 +1,9 @@
 {
   "owner": {
     "wake_word": "friday",
-    "memory": {},
+    "memory": {
+      "favorite snack": "chips"
+    },
     "custom_commands": {
       "chill mode": "open spotify",
       "focus mode": "study mode"
