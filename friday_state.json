@@ -1,7 +1,7 @@
 {
   "name": "FRIDAY",
   "wake_word": "hey friday",
-  "model": "gpt-4o",
+  "model": "gpt-5",
   "cloud_ready": false,
   "memory_summary": "No stored memory yet.",
   "history": [],

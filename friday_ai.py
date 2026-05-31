@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import threading
@@ -13,6 +14,11 @@ try:
 except Exception:
     load_dotenv = None
 
+try:
+    import speech_recognition as speech_recognition
+except Exception:  # pragma: no cover - optional dependency
+    speech_recognition = None
+
 BASE_DIR = Path(__file__).resolve().parent
 if load_dotenv is not None:
     try:
@@ -22,10 +28,18 @@ if load_dotenv is not None:
 
 SUPPORTED_MODELS = ("gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o")
 DEFAULT_MODEL = "gpt-5"
+SUPPORTED_TRANSCRIPTION_MODELS = (
+    "gpt-4o-transcribe",
+    "gpt-4o-mini-transcribe",
+    "gpt-4o-transcribe-diarize",
+    "whisper-1",
+)
+DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 
 _API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 _RESPONSES_URL = f"{_BASE_URL}/responses"
+_TRANSCRIPTION_URL = f"{_BASE_URL}/audio/transcriptions"
 _LOCK = threading.Lock()
 
 FRIDAY_CORE_PROMPT = (
@@ -46,8 +60,28 @@ def resolve_model(model: str | None = None) -> str:
     return DEFAULT_MODEL
 
 
+def resolve_transcription_model(model: str | None = None) -> str:
+    candidate = (model or os.getenv("FRIDAY_TRANSCRIBE_MODEL") or DEFAULT_TRANSCRIPTION_MODEL).strip()
+    if candidate in SUPPORTED_TRANSCRIPTION_MODELS:
+        return candidate
+    return DEFAULT_TRANSCRIPTION_MODEL
+
+
 def openai_ready() -> bool:
     return bool(_API_KEY)
+
+
+def _extract_transcript_text(data: Any) -> str | None:
+    if isinstance(data, dict):
+        text = data.get("text")
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+        output_text = data.get("output_text")
+        if isinstance(output_text, str) and output_text.strip():
+            return output_text.strip()
+    elif isinstance(data, str) and data.strip():
+        return data.strip()
+    return None
 
 
 def extract_json_object(text: str | None) -> dict[str, Any] | None:
@@ -147,6 +181,59 @@ def _responses_call(
     if not content:
         return None, "missing_content"
     return content, None
+
+
+def transcribe_audio_bytes(
+    audio_bytes: bytes,
+    *,
+    model: str | None = None,
+) -> tuple[str, str | None]:
+    if not audio_bytes:
+        return "", "empty_audio"
+
+    transcription_model = resolve_transcription_model(model)
+    openai_error: str | None = None
+
+    if _API_KEY:
+        try:
+            with _LOCK:
+                response = requests.post(
+                    _TRANSCRIPTION_URL,
+                    headers={"Authorization": f"Bearer {_API_KEY}"},
+                    files={"file": ("friday.wav", audio_bytes, "audio/wav")},
+                    data={"model": transcription_model},
+                    timeout=60,
+                )
+            if response.ok:
+                try:
+                    data = response.json()
+                except ValueError:
+                    data = response.text
+                text = _extract_transcript_text(data)
+                if text is not None:
+                    return text, None
+                return "", "missing_transcript"
+            openai_error = f"http_{response.status_code}: {response.text[:300]}"
+        except requests.RequestException as exc:
+            openai_error = str(exc)
+    else:
+        openai_error = "openai_api_key_missing"
+
+    if speech_recognition is not None:
+        try:
+            recognizer = speech_recognition.Recognizer()
+            with speech_recognition.AudioFile(io.BytesIO(audio_bytes)) as source:
+                audio_data = recognizer.record(source)
+            text = recognizer.recognize_google(audio_data)
+            return text.strip(), None
+        except speech_recognition.UnknownValueError:
+            return "", None
+        except Exception as exc:
+            if openai_error:
+                return "", f"{openai_error}; fallback_failed: {exc}"
+            return "", f"fallback_failed: {exc}"
+
+    return "", openai_error or "transcription_unavailable"
 
 
 def generate_reply(

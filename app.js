@@ -21,6 +21,7 @@ const state = {
   voiceResumeAfterSpeech: false,
   voiceFallbackActive: false,
   transcribing: false,
+  finalizingVoiceCapture: false,
   recordedChunks: [],
   recordingSampleRate: 0,
   recordingStartedAt: 0,
@@ -329,8 +330,12 @@ function voiceSummaryText() {
     return "Speech synthesis unavailable in this browser.";
   }
   const voice = state.selectedVoice ? `Selected voice: ${state.selectedVoice.name}` : "Browser voice ready.";
-  const recognition = state.recognition ? "Speech recognition armed." : "Wake word ready.";
-  return `${voice} ${recognition}`;
+  const capture = state.listening
+    ? state.transcribing
+      ? "Transcribing microphone input."
+      : "Microphone capture armed."
+    : "Microphone capture ready.";
+  return `${voice} ${capture}`;
 }
 
 function eventLabel(item) {
@@ -779,7 +784,9 @@ async function startMicAnalysis({ captureAudio = false } = {}) {
       state.micSource.connect(state.micProcessor);
       state.micProcessor.connect(state.micContext.destination);
     }
-    await state.micContext.resume?.().catch(() => {});
+    if (state.micContext.resume) {
+      await state.micContext.resume().catch(() => {});
+    }
   } catch (error) {
     stopMicAnalysis();
     throw error;
@@ -830,7 +837,7 @@ async function transcribeRecordedVoice() {
     const wavBuffer = encodeWavBuffer(samples, sampleRate);
     const payload = await apiPost("/api/transcribe", {
       audio_base64: arrayBufferToBase64(wavBuffer),
-      language: "en-US",
+      model: "gpt-4o-transcribe",
     });
     return String(payload.text || "").trim();
   } finally {
@@ -859,19 +866,9 @@ async function resumeVoiceRuntime() {
     state.voiceResumeAfterSpeech = false;
     return;
   }
-  const useFallback = state.voiceFallbackActive || !state.recognition;
   state.voiceResumeAfterSpeech = false;
   try {
-    await startMicAnalysis({ captureAudio: useFallback });
-    if (state.recognition && !useFallback) {
-      try {
-        await sleep(140);
-        state.recognition.start();
-      } catch {
-        state.voiceFallbackActive = true;
-        await startMicAnalysis({ captureAudio: true });
-      }
-    }
+    await startMicAnalysis({ captureAudio: true });
     updateVoiceState("Listening", "listening");
   } catch {
     state.voiceFallbackActive = true;
@@ -880,6 +877,7 @@ async function resumeVoiceRuntime() {
       updateVoiceState("Listening", "listening");
       showToast("Voice", "Microphone capture restored.");
     } catch {
+      state.voiceFallbackActive = false;
       updateVoiceState("Voice idle", "idle");
       showToast("Voice", "Unable to restart microphone capture.");
     }
@@ -912,6 +910,11 @@ async function finalizeVoiceCapture(reason = "silence") {
       return;
     }
     await sendCommand(cleaned);
+  } catch (error) {
+    showToast("Voice", error instanceof Error ? error.message : "Transcription failed.");
+    if (state.listening) {
+      await resumeVoiceRuntime();
+    }
   } finally {
     state.finalizingVoiceCapture = false;
   }
@@ -993,6 +996,9 @@ async function sendCommand(textOverride = null) {
     if (!spoken) {
       state.speaking = false;
       updateVoiceState(state.listening ? "Listening" : "Voice idle", state.listening ? "listening" : "idle");
+      if (state.listening) {
+        void resumeVoiceRuntime();
+      }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Command failed.";
@@ -1000,6 +1006,9 @@ async function sendCommand(textOverride = null) {
     showToast("FRIDAY", message);
     state.speaking = false;
     updateVoiceState(state.listening ? "Listening" : "Voice idle", state.listening ? "listening" : "idle");
+    if (state.listening) {
+      void resumeVoiceRuntime();
+    }
   }
 }
 
@@ -1064,52 +1073,41 @@ function initRecognition() {
 }
 
 async function toggleVoice() {
-  if (!state.recognition) {
-    state.recognition = initRecognition();
-  }
   if (!state.listening) {
     state.listening = true;
+    state.voiceFallbackActive = true;
     updateVoiceState("Listening", "listening");
-    updateTranscript(state.recognition ? "Listening for Hey Friday..." : "Recording microphone input...", true);
+    updateTranscript("Recording microphone input...", true);
     playTone(760, 0.07, "sine", 0.03);
     try {
-      if (state.recognition) {
-        state.voiceFallbackActive = false;
-        await startMicAnalysis({ captureAudio: false });
-        await sleep(140);
-        state.recognition.start();
-        showToast("Voice", "Wake word listening activated.");
-      } else {
-        state.voiceFallbackActive = true;
-        await startMicAnalysis({ captureAudio: true });
-        showToast("Voice", "Microphone capture activated.");
-      }
+      await startMicAnalysis({ captureAudio: true });
+      showToast("Voice", "Microphone capture activated.");
     } catch {
-      state.voiceFallbackActive = true;
       try {
         await startMicAnalysis({ captureAudio: true });
         showToast("Voice", "Using microphone capture instead.");
       } catch (error) {
         state.listening = false;
+        state.voiceFallbackActive = false;
         updateVoiceState("Voice idle", "idle");
         showToast("Voice", error instanceof Error ? error.message : "Microphone access failed.");
         return;
       }
     }
   } else {
+    const shouldFinalize = state.recordedChunks.length > 0;
     state.listening = false;
     state.voiceResumeAfterSpeech = false;
     state.voiceFallbackActive = false;
     updateVoiceState("Voice idle", "idle");
-    updateTranscript("Voice listening paused.", false);
     stopMicAnalysis();
-    try {
-      state.recognition.stop();
-    } catch {
-      // ignored
+    if (shouldFinalize) {
+      await finalizeVoiceCapture("manual");
+    } else {
+      updateTranscript("Voice listening paused.", false);
     }
     playTone(480, 0.05, "triangle", 0.025);
-    showToast("Voice", "Wake word listening paused.");
+    showToast("Voice", "Microphone capture paused.");
   }
 }
 
