@@ -1,6 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
+set "FRIDAY_AUTO_OPEN=0"
 
 set "PYTHON_EXE=%~dp0friday_env\Scripts\python.exe"
 set "NGROK_EXE=C:\Users\forho\AppData\Local\Microsoft\WinGet\Packages\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\ngrok.exe"
@@ -35,5 +36,5 @@ powershell -NoProfile -Command ^
   "}"
 
 echo.
-echo Keep both FRIDAY Server and FRIDAY Ngrok windows open.
+echo Keep the FRIDAY Server and FRIDAY Ngrok windows open.
 pause

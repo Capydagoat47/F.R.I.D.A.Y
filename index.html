@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#02060d">
+  <title>FRIDAY</title>
+  <link rel="stylesheet" href="/app.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="boot" id="boot">
+    <div class="boot-panel">
+      <div class="boot-eyebrow">FRIDAY CORE</div>
+      <div class="boot-title">SYSTEM INITIALIZATION</div>
+      <div class="boot-ring"></div>
+      <div class="boot-log" id="bootLog"></div>
+      <div class="boot-bar"><span id="bootBar"></span></div>
+      <div class="boot-foot">Hey Friday | Local telemetry | Wake word armed</div>
+    </div>
+  </div>
+
+  <div class="shell" id="shell">
+    <div class="hud-grid">
+      <aside class="panel rail">
+        <div class="panel-head">
+          <span>FRIDAY // MEMORY</span>
+          <span class="head-chip" id="cloudChip">Offline</span>
+        </div>
+        <div class="tab-strip" id="leftTabs">
+          <button class="tab active" type="button" data-view="conversation">Conversation</button>
+          <button class="tab" type="button" data-view="commands">Commands</button>
+          <button class="tab" type="button" data-view="notes">Notes</button>
+          <button class="tab" type="button" data-view="tasks">Tasks</button>
+          <button class="tab" type="button" data-view="history">History</button>
+        </div>
+        <div class="panel-scroll" id="leftPanel"></div>
+      </aside>
+
+      <main class="center-stage">
+        <section class="panel orb-panel">
+          <div class="panel-head panel-head-center">
+            <span>FRIDAY // CORE</span>
+            <span class="head-chip" id="modelChip">gpt-5</span>
+            <span class="head-chip" id="wakeChip">Hey Friday</span>
+          </div>
+          <div class="status-strip">
+            <span class="status-chip" id="voiceChip">Voice idle</span>
+            <span class="status-chip" id="listenChip">Wake word armed</span>
+            <span class="status-chip" id="telemetryChip">Telemetry live</span>
+            <span class="status-chip" id="memoryChip">Memory ready</span>
+          </div>
+          <div class="orb-shell">
+            <div class="orb-backlight"></div>
+            <div id="threeStage" class="three-stage"></div>
+            <canvas id="waveCanvas" class="wave-canvas"></canvas>
+            <div class="orb-grid"></div>
+            <div class="orb-ring ring-a"></div>
+            <div class="orb-ring ring-b"></div>
+            <div class="orb-ring ring-c"></div>
+            <div class="orb-core"></div>
+            <div class="orb-scan"></div>
+            <div class="orb-halo"></div>
+            <div class="orb-caption">
+              <div class="orb-title" id="statusLine">FRIDAY online.</div>
+              <div class="orb-sub" id="subLine">Wake word armed. Waiting for a command.</div>
+              <div class="orb-transcript" id="transcriptLine">Transcript will appear here.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="center-grid">
+          <article class="panel micro-panel">
+            <div class="micro-head">Memory Summary</div>
+            <div class="micro-body" id="memorySummary">No stored memory yet.</div>
+          </article>
+          <article class="panel micro-panel">
+            <div class="micro-head">Telemetry Snapshot</div>
+            <div class="micro-body" id="metricsSummary">Telemetry is warming up.</div>
+          </article>
+          <article class="panel micro-panel">
+            <div class="micro-head">Voice Engine</div>
+            <div class="micro-body" id="voiceSummary">Browser voice ready.</div>
+          </article>
+          <article class="panel micro-panel">
+            <div class="micro-head">Quick Actions</div>
+            <div class="micro-body" id="quickSummary">Open settings, search, note, task, timer, or summarize a file.</div>
+          </article>
+        </section>
+      </main>
+
+      <aside class="panel rail">
+        <div class="panel-head">
+          <span>SYSTEM TELEMETRY</span>
+          <span class="head-chip" id="timeChip">--:--</span>
+        </div>
+        <div class="panel-scroll" id="rightPanel"></div>
+      </aside>
+    </div>
+
+    <footer class="panel dock">
+      <div class="dock-command">
+        <input id="commandInput" type="text" autocomplete="off" placeholder="Speak or type to FRIDAY...">
+        <button id="sendBtn" type="button">Transmit</button>
+      </div>
+      <div class="dock-actions">
+        <button id="voiceBtn" type="button">Voice</button>
+        <button id="wakeBtn" type="button">Wake</button>
+        <button id="ambientBtn" type="button">Ambient</button>
+        <button id="fullBtn" type="button">Fullscreen</button>
+        <button id="clearBtn" type="button">Clear</button>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+</body>
+</html>

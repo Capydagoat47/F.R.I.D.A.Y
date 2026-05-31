@@ -1,0 +1,35 @@
+{
+  "name": "FRIDAY",
+  "wake_word": "hey friday",
+  "model": "gpt-4o",
+  "cloud_ready": false,
+  "memory_summary": "No stored memory yet.",
+  "history": [],
+  "events": [],
+  "notes": [],
+  "tasks": [],
+  "modules": [
+    {
+      "name": "Voice",
+      "status": "Armed",
+      "detail": "Wake word and speech playback"
+    },
+    {
+      "name": "Memory",
+      "status": "Live",
+      "detail": "History, notes, and tasks"
+    },
+    {
+      "name": "Automation",
+      "status": "Ready",
+      "detail": "Local machine actions"
+    },
+    {
+      "name": "Analytics",
+      "status": "Live",
+      "detail": "CPU, GPU, RAM, network, and battery"
+    }
+  ],
+  "created_at": "2026-05-31T14:48:47",
+  "updated_at": "2026-05-31T14:50:21"
+}
