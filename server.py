@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import json
+import io
 import os
 import re
 import subprocess
@@ -15,6 +17,11 @@ from typing import Any
 from urllib.parse import quote_plus
 
 from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, openai_ready, resolve_model
+
+try:
+    import speech_recognition as speech_recognition
+except Exception:  # pragma: no cover - optional dependency
+    speech_recognition = None
 
 HOST = os.getenv("FRIDAY_HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
@@ -224,6 +231,36 @@ def parse_json_body(raw_body: bytes) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("JSON body must be an object")
     return data
+
+
+def decode_audio_payload(audio_value: str) -> bytes:
+    cleaned = str(audio_value or "").strip()
+    if not cleaned:
+        raise ValueError("Audio payload is required.")
+    if "," in cleaned and cleaned.lower().startswith("data:"):
+        cleaned = cleaned.split(",", 1)[1]
+    return base64.b64decode(cleaned, validate=False)
+
+
+def transcribe_audio_bytes(audio_bytes: bytes, language: str = "en-US") -> dict[str, Any]:
+    if speech_recognition is None:
+        raise RuntimeError("Speech recognition is unavailable on the server.")
+    recognizer = speech_recognition.Recognizer()
+    audio_stream = io.BytesIO(audio_bytes)
+    try:
+        with speech_recognition.AudioFile(audio_stream) as source:
+            audio_data = recognizer.record(source)
+    except Exception as exc:
+        raise RuntimeError(f"Unable to read audio: {exc}") from exc
+
+    try:
+        text = recognizer.recognize_google(audio_data, language=language or "en-US")
+    except speech_recognition.UnknownValueError:
+        return {"text": "", "engine": "google-speech-recognition"}
+    except speech_recognition.RequestError as exc:
+        raise RuntimeError(f"Speech transcription service unavailable: {exc}") from exc
+
+    return {"text": text.strip(), "engine": "google-speech-recognition"}
 
 
 def normalize_text(text: str) -> str:
@@ -975,6 +1012,20 @@ class FridayHandler(BaseHTTPRequestHandler):
                 return self._send_json({"ok": False, "error": "Empty message."}, status=400)
             result = handle_message(text)
             return self._send_json({"ok": True, **result})
+
+        if self.path == "/api/transcribe":
+            try:
+                payload = parse_json_body(raw_body)
+            except Exception as exc:
+                return self._send_json({"ok": False, "error": str(exc)}, status=400)
+            audio_value = payload.get("audio_base64") or payload.get("audio") or ""
+            language = str(payload.get("language") or "en-US").strip() or "en-US"
+            try:
+                audio_bytes = decode_audio_payload(audio_value)
+                result = transcribe_audio_bytes(audio_bytes, language=language)
+            except Exception as exc:
+                return self._send_json({"ok": False, "error": str(exc)}, status=400)
+            return self._send_json({"ok": True, **result, "state": public_state()})
 
         if self.path == "/api/note":
             try:

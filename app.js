@@ -17,6 +17,15 @@ const state = {
   micContext: null,
   micSource: null,
   micAnalyser: null,
+  micProcessor: null,
+  voiceResumeAfterSpeech: false,
+  voiceFallbackActive: false,
+  transcribing: false,
+  recordedChunks: [],
+  recordingSampleRate: 0,
+  recordingStartedAt: 0,
+  recordingLastVoiceAt: 0,
+  recordingHeardVoice: false,
   ambientContext: null,
   ambientNodes: [],
   weather: null,
@@ -89,6 +98,74 @@ function clamp(value, min, max) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function computeRms(samples) {
+  if (!samples || !samples.length) {
+    return 0;
+  }
+  let total = 0;
+  for (let index = 0; index < samples.length; index += 1) {
+    const value = samples[index];
+    total += value * value;
+  }
+  return Math.sqrt(total / samples.length);
+}
+
+function concatFloat32Arrays(chunks) {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const output = new Float32Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    output.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return output;
+}
+
+function encodeWavBuffer(samples, sampleRate) {
+  const bytesPerSample = 2;
+  const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+  const view = new DataView(buffer);
+
+  const writeString = (offset, value) => {
+    for (let index = 0; index < value.length; index += 1) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 16, true);
+  writeString(36, "data");
+  view.setUint32(40, samples.length * bytesPerSample, true);
+
+  let offset = 44;
+  for (let index = 0; index < samples.length; index += 1) {
+    const value = clamp(samples[index], -1, 1);
+    view.setInt16(offset, value < 0 ? value * 0x8000 : value * 0x7fff, true);
+    offset += bytesPerSample;
+  }
+  return buffer;
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const slice = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...slice);
+  }
+  return btoa(binary);
 }
 
 function escapeHtml(text) {
@@ -639,9 +716,210 @@ function updateVoiceState(label, mode = "idle") {
   setModeEnergy(mode);
 }
 
+function clearVoiceRecording() {
+  state.recordedChunks = [];
+  state.recordingSampleRate = 0;
+  state.recordingStartedAt = 0;
+  state.recordingLastVoiceAt = 0;
+  state.recordingHeardVoice = false;
+}
+
+async function startMicAnalysis({ captureAudio = false } = {}) {
+  stopMicAnalysis();
+  try {
+    state.micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    state.micContext = new (window.AudioContext || window.webkitAudioContext)();
+    state.micSource = state.micContext.createMediaStreamSource(state.micStream);
+    state.micAnalyser = state.micContext.createAnalyser();
+    state.micAnalyser.fftSize = 256;
+    state.micSource.connect(state.micAnalyser);
+
+    clearVoiceRecording();
+    state.voiceFallbackActive = captureAudio;
+    if (captureAudio) {
+      state.recordingSampleRate = state.micContext.sampleRate || 44100;
+      state.recordingStartedAt = Date.now();
+      state.micProcessor = state.micContext.createScriptProcessor(4096, 1, 1);
+      state.micProcessor.onaudioprocess = (event) => {
+        if (!state.listening || state.transcribing || state.finalizingVoiceCapture) {
+          return;
+        }
+        const input = event.inputBuffer.getChannelData(0);
+        const chunk = new Float32Array(input.length);
+        chunk.set(input);
+        state.recordedChunks.push(chunk);
+        const rms = computeRms(chunk);
+        state.audioLevel = clamp(Math.max(state.audioLevel * 0.72, rms * 3.5), 0.04, 1);
+        if (rms > 0.018) {
+          state.recordingHeardVoice = true;
+          state.recordingLastVoiceAt = Date.now();
+        }
+        const totalFor = Date.now() - state.recordingStartedAt;
+        if (state.recordingHeardVoice && !state.finalizingVoiceCapture) {
+          const silenceFor = Date.now() - state.recordingLastVoiceAt;
+          if (silenceFor > 1100 && totalFor > 1300) {
+            void finalizeVoiceCapture("silence");
+          } else if (totalFor > 15000) {
+            void finalizeVoiceCapture("timeout");
+          }
+        }
+        try {
+          const output = event.outputBuffer.getChannelData(0);
+          output.fill(0);
+        } catch {
+          // ignored
+        }
+      };
+      state.micSource.connect(state.micProcessor);
+      state.micProcessor.connect(state.micContext.destination);
+    }
+    await state.micContext.resume?.().catch(() => {});
+  } catch (error) {
+    stopMicAnalysis();
+    throw error;
+  }
+}
+
+function stopMicAnalysis() {
+  try {
+    if (state.micProcessor) {
+      state.micProcessor.disconnect();
+    }
+    if (state.micStream) {
+      state.micStream.getTracks().forEach((track) => track.stop());
+    }
+    if (state.micSource) {
+      state.micSource.disconnect();
+    }
+    if (state.micAnalyser) {
+      state.micAnalyser.disconnect();
+    }
+    if (state.micContext) {
+      state.micContext.close();
+    }
+  } catch {
+    // ignored
+  }
+  state.micProcessor = null;
+  state.micStream = null;
+  state.micContext = null;
+  state.micSource = null;
+  state.micAnalyser = null;
+  state.audioLevel = 0;
+}
+
+async function transcribeRecordedVoice() {
+  if (state.transcribing || !state.recordedChunks.length) {
+    return "";
+  }
+  const sampleRate = state.recordingSampleRate || 44100;
+  const samples = concatFloat32Arrays(state.recordedChunks);
+  if (samples.length < sampleRate * 0.45) {
+    clearVoiceRecording();
+    return "";
+  }
+  state.transcribing = true;
+  updateVoiceState("Transcribing", "thinking");
+  try {
+    const wavBuffer = encodeWavBuffer(samples, sampleRate);
+    const payload = await apiPost("/api/transcribe", {
+      audio_base64: arrayBufferToBase64(wavBuffer),
+      language: "en-US",
+    });
+    return String(payload.text || "").trim();
+  } finally {
+    state.transcribing = false;
+    clearVoiceRecording();
+  }
+}
+
+async function pauseVoiceRuntime() {
+  if (!state.listening) {
+    return;
+  }
+  state.voiceResumeAfterSpeech = true;
+  try {
+    if (state.recognition) {
+      state.recognition.stop();
+    }
+  } catch {
+    // ignored
+  }
+  stopMicAnalysis();
+}
+
+async function resumeVoiceRuntime() {
+  if (!state.listening) {
+    state.voiceResumeAfterSpeech = false;
+    return;
+  }
+  const useFallback = state.voiceFallbackActive || !state.recognition;
+  state.voiceResumeAfterSpeech = false;
+  try {
+    await startMicAnalysis({ captureAudio: useFallback });
+    if (state.recognition && !useFallback) {
+      try {
+        await sleep(140);
+        state.recognition.start();
+      } catch {
+        state.voiceFallbackActive = true;
+        await startMicAnalysis({ captureAudio: true });
+      }
+    }
+    updateVoiceState("Listening", "listening");
+  } catch {
+    state.voiceFallbackActive = true;
+    try {
+      await startMicAnalysis({ captureAudio: true });
+      updateVoiceState("Listening", "listening");
+      showToast("Voice", "Microphone capture restored.");
+    } catch {
+      updateVoiceState("Voice idle", "idle");
+      showToast("Voice", "Unable to restart microphone capture.");
+    }
+  }
+}
+
+async function finalizeVoiceCapture(reason = "silence") {
+  if (state.finalizingVoiceCapture) {
+    return;
+  }
+  state.finalizingVoiceCapture = true;
+  try {
+    const transcript = await transcribeRecordedVoice();
+    if (!transcript) {
+      if (reason !== "manual") {
+        showToast("Voice", "I couldn't hear that clearly.");
+      }
+      if (state.listening) {
+        await resumeVoiceRuntime();
+      }
+      return;
+    }
+    const cleaned = stripWakeWord(transcript);
+    updateTranscript(transcript, true);
+    if (!cleaned) {
+      showToast("Voice", "Say Hey Friday, then the command.");
+      if (state.listening) {
+        await resumeVoiceRuntime();
+      }
+      return;
+    }
+    await sendCommand(cleaned);
+  } finally {
+    state.finalizingVoiceCapture = false;
+  }
+}
+
 function finalizeSpeech(text) {
   if (!("speechSynthesis" in window) || !text) {
-    return;
+    return false;
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
@@ -660,11 +938,16 @@ function finalizeSpeech(text) {
   };
   utterance.onend = () => {
     state.speaking = false;
-    updateVoiceState(state.listening ? "Listening" : "Voice idle", state.listening ? "listening" : "idle");
     playTone(520, 0.05, "triangle", 0.025);
-    renderAll();
+    if (state.listening) {
+      void resumeVoiceRuntime();
+    } else {
+      updateVoiceState("Voice idle", "idle");
+      renderAll();
+    }
   };
   window.speechSynthesis.speak(utterance);
+  return true;
 }
 
 function stripWakeWord(text) {
@@ -685,6 +968,7 @@ async function sendCommand(textOverride = null) {
     return;
   }
   els.commandInput.value = "";
+  await pauseVoiceRuntime();
   updateVoiceState("Thinking", "thinking");
   updateTranscript("Processing command...", true);
   try {
@@ -705,8 +989,11 @@ async function sendCommand(textOverride = null) {
     if (payload.kind === "model") {
       showToast("Model", reply);
     }
-    finalizeSpeech(reply);
-    updateVoiceState(state.listening ? "Listening" : "Voice idle", state.listening ? "listening" : "idle");
+    const spoken = finalizeSpeech(reply);
+    if (!spoken) {
+      state.speaking = false;
+      updateVoiceState(state.listening ? "Listening" : "Voice idle", state.listening ? "listening" : "idle");
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Command failed.";
     updateTranscript(message, false);
@@ -750,85 +1037,69 @@ function initRecognition() {
       }
     }
   };
-  recognition.onerror = () => {
-    state.listening = false;
-    updateVoiceState("Voice idle", "idle");
-    showToast("Voice", "Speech recognition paused.");
+  recognition.onerror = async () => {
+    if (!state.listening || state.voiceResumeAfterSpeech) {
+      return;
+    }
+    showToast("Voice", "Browser speech recognition paused. Switching to microphone capture.");
+    state.voiceFallbackActive = true;
+    try {
+      await startMicAnalysis({ captureAudio: true });
+    } catch {
+      updateVoiceState("Voice idle", "idle");
+      showToast("Voice", "Microphone capture is unavailable.");
+    }
   };
   recognition.onend = () => {
-    if (state.listening) {
+    if (state.listening && !state.voiceResumeAfterSpeech && !state.voiceFallbackActive) {
       try {
         recognition.start();
       } catch {
-        state.listening = false;
-        updateVoiceState("Voice idle", "idle");
+        state.voiceFallbackActive = true;
+        void startMicAnalysis({ captureAudio: true }).catch(() => {});
       }
     }
   };
   return recognition;
 }
 
-async function startMicAnalysis() {
-  try {
-    state.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    state.micContext = new (window.AudioContext || window.webkitAudioContext)();
-    state.micSource = state.micContext.createMediaStreamSource(state.micStream);
-    state.micAnalyser = state.micContext.createAnalyser();
-    state.micAnalyser.fftSize = 256;
-    state.micSource.connect(state.micAnalyser);
-  } catch {
-    state.micStream = null;
-    state.micContext = null;
-    state.micSource = null;
-    state.micAnalyser = null;
-  }
-}
-
-function stopMicAnalysis() {
-  try {
-    if (state.micStream) {
-      state.micStream.getTracks().forEach((track) => track.stop());
-    }
-    if (state.micSource) {
-      state.micSource.disconnect();
-    }
-    if (state.micAnalyser) {
-      state.micAnalyser.disconnect();
-    }
-    if (state.micContext) {
-      state.micContext.close();
-    }
-  } catch {
-    // ignored
-  }
-  state.micStream = null;
-  state.micContext = null;
-  state.micSource = null;
-  state.micAnalyser = null;
-}
-
 async function toggleVoice() {
   if (!state.recognition) {
     state.recognition = initRecognition();
   }
-  if (!state.recognition) {
-    showToast("Voice", "Speech recognition is not available in this browser.");
-    return;
-  }
   if (!state.listening) {
     state.listening = true;
     updateVoiceState("Listening", "listening");
-    updateTranscript("Listening for Hey Friday...", true);
+    updateTranscript(state.recognition ? "Listening for Hey Friday..." : "Recording microphone input...", true);
     playTone(760, 0.07, "sine", 0.03);
-    await startMicAnalysis();
     try {
-      state.recognition.start();
+      if (state.recognition) {
+        state.voiceFallbackActive = false;
+        await startMicAnalysis({ captureAudio: false });
+        await sleep(140);
+        state.recognition.start();
+        showToast("Voice", "Wake word listening activated.");
+      } else {
+        state.voiceFallbackActive = true;
+        await startMicAnalysis({ captureAudio: true });
+        showToast("Voice", "Microphone capture activated.");
+      }
     } catch {
-      // ignored
+      state.voiceFallbackActive = true;
+      try {
+        await startMicAnalysis({ captureAudio: true });
+        showToast("Voice", "Using microphone capture instead.");
+      } catch (error) {
+        state.listening = false;
+        updateVoiceState("Voice idle", "idle");
+        showToast("Voice", error instanceof Error ? error.message : "Microphone access failed.");
+        return;
+      }
     }
-    showToast("Voice", "Wake word listening activated.");
   } else {
     state.listening = false;
+    state.voiceResumeAfterSpeech = false;
+    state.voiceFallbackActive = false;
     updateVoiceState("Voice idle", "idle");
     updateTranscript("Voice listening paused.", false);
     stopMicAnalysis();
