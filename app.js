@@ -909,7 +909,7 @@ async function finalizeVoiceCapture(reason = "silence") {
       }
       return;
     }
-    await sendCommand(cleaned);
+    await sendCommand(cleaned, "voice");
   } catch (error) {
     showToast("Voice", error instanceof Error ? error.message : "Transcription failed.");
     if (state.listening) {
@@ -964,7 +964,7 @@ function stripWakeWord(text) {
   return cleaned.replace(/^[,!.:\-\s]+/, "").trim();
 }
 
-async function sendCommand(textOverride = null) {
+async function sendCommand(textOverride = null, source = "typed") {
   const input = (textOverride ?? els.commandInput.value).trim();
   if (!input) {
     showToast("FRIDAY", "Give me a command first.");
@@ -975,7 +975,7 @@ async function sendCommand(textOverride = null) {
   updateVoiceState("Thinking", "thinking");
   updateTranscript("Processing command...", true);
   try {
-    const payload = await apiPost("/api/chat", { text: input });
+    const payload = await apiPost("/api/chat", { text: input, source });
     const previousIds = new Set(state.lastEventIds);
     state.data = payload.state || state.data;
     syncEventToasts(payload);
@@ -1039,10 +1039,10 @@ function initRecognition() {
       const cleaned = stripWakeWord(finalText);
       if (state.wakeArmed) {
         if (/hey\s+friday|^friday\b/i.test(finalText) && cleaned) {
-          sendCommand(cleaned);
+          sendCommand(cleaned, "voice");
         }
       } else if (cleaned) {
-        sendCommand(cleaned);
+        sendCommand(cleaned, "voice");
       }
     }
   };

@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
 
-from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, openai_ready, resolve_model, transcribe_audio_bytes
+from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, openai_ready, request_json, resolve_model, transcribe_audio_bytes
 
 HOST = os.getenv("FRIDAY_HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
@@ -841,6 +841,148 @@ def route_command(raw_text: str) -> dict[str, Any]:
     return {"handled": False, "reply": "", "kind": "conversation"}
 
 
+VOICE_INTENT_KINDS = {
+    "open",
+    "close",
+    "search",
+    "note",
+    "task",
+    "timer",
+    "reminder",
+    "model",
+    "time",
+    "metrics",
+    "lock",
+    "wake_word",
+    "clear_memory",
+    "conversation",
+}
+
+
+def classify_voice_intent(raw_text: str) -> dict[str, Any] | None:
+    text = (raw_text or "").strip()
+    if not text or not openai_ready():
+        return None
+
+    prompt = "\n".join(
+        [
+            "You are FRIDAY's voice intent parser.",
+            "Decide whether the user's spoken text is a local operating-system command or normal conversation.",
+            "Return only JSON with these keys:",
+            "kind: one of open, close, search, note, task, timer, reminder, model, time, metrics, lock, wake_word, clear_memory, conversation",
+            "target: optional string for apps, files, or model names",
+            "query: optional string for searches",
+            "text: optional string for note/task content",
+            "seconds: optional integer duration in seconds",
+            "label: optional string for timer/reminder label",
+            "reminder: optional boolean",
+            "model: optional string when switching models",
+            "wake_word: optional string when changing wake word",
+            "",
+            f"User text: {text}",
+        ]
+    )
+    payload, error = request_json(prompt, model=STATE.get("model", DEFAULT_MODEL))
+    if not payload or error:
+        return None
+
+    kind = normalize_text(str(payload.get("kind", "")))
+    if kind not in VOICE_INTENT_KINDS:
+        return None
+
+    return payload
+
+
+def execute_intent(intent: dict[str, Any]) -> dict[str, Any] | None:
+    kind = normalize_text(str(intent.get("kind", "")))
+    if kind == "conversation":
+        return None
+
+    if kind == "open":
+        target = str(intent.get("target") or intent.get("query") or intent.get("text") or "").strip()
+        if not target:
+            return {"handled": True, "reply": "I need a target to open.", "kind": "open"}
+        return {"handled": True, "reply": open_target(target), "kind": "open"}
+
+    if kind == "close":
+        target = str(intent.get("target") or intent.get("query") or intent.get("text") or "").strip()
+        if not target:
+            return {"handled": True, "reply": "I need a target to close.", "kind": "close"}
+        return {"handled": True, "reply": close_target(target), "kind": "close"}
+
+    if kind == "search":
+        query = str(intent.get("query") or intent.get("target") or intent.get("text") or "").strip()
+        if not query:
+            return {"handled": True, "reply": "Tell me what to search for.", "kind": "search"}
+        return {"handled": True, "reply": search_web(query), "kind": "search"}
+
+    if kind in {"note", "task"}:
+        content = str(intent.get("text") or intent.get("query") or intent.get("target") or "").strip()
+        if not content:
+            return {"handled": True, "reply": "Give me the note text.", "kind": kind}
+        if kind == "note":
+            return {"handled": True, "reply": add_note(content), "kind": "note"}
+        return {"handled": True, "reply": add_task(content), "kind": "task"}
+
+    if kind in {"timer", "reminder"}:
+        seconds_value = intent.get("seconds")
+        try:
+            seconds = int(seconds_value) if seconds_value is not None else 0
+        except Exception:
+            seconds = 0
+        if seconds <= 0:
+            label_text = str(intent.get("label") or intent.get("text") or "").strip()
+            seconds = parse_duration_seconds(label_text) or 0
+        label = str(intent.get("label") or intent.get("text") or "").strip() or "Reminder"
+        reminder_mode = kind == "reminder" or bool(intent.get("reminder"))
+        if seconds <= 0:
+            return {
+                "handled": True,
+                "reply": "Give me a duration like 5 minutes or 30 seconds.",
+                "kind": "timer",
+            }
+        return {
+            "handled": True,
+            "reply": schedule_timer(seconds, label, reminder=reminder_mode),
+            "kind": "timer",
+        }
+
+    if kind == "model":
+        model_name = str(intent.get("model") or intent.get("target") or intent.get("text") or "").strip()
+        if not model_name:
+            return {"handled": True, "reply": "Tell me which model to use.", "kind": "model"}
+        ok, result = set_model(model_name)
+        if ok:
+            return {"handled": True, "reply": f"Preferred model set to {result}.", "kind": "model"}
+        return {"handled": True, "reply": result, "kind": "model"}
+
+    if kind == "time":
+        timestamp = datetime.now().strftime("%A, %B %d, %Y %H:%M")
+        return {"handled": True, "reply": timestamp, "kind": "time"}
+
+    if kind == "metrics":
+        metrics = get_system_metrics(force=True)
+        return {"handled": True, "reply": format_metrics_summary(metrics), "kind": "metrics"}
+
+    if kind == "lock":
+        return {"handled": True, "reply": lock_pc(), "kind": "lock"}
+
+    if kind == "wake_word":
+        wake_word = str(intent.get("wake_word") or intent.get("target") or intent.get("text") or "").strip().lower()
+        if not wake_word:
+            return {"handled": True, "reply": "Wake word is required.", "kind": "wake_word"}
+        STATE["wake_word"] = wake_word
+        touch_state()
+        rebuild_memory_summary()
+        save_state()
+        return {"handled": True, "reply": f"Wake word set to {STATE['wake_word']}.", "kind": "wake_word"}
+
+    if kind == "clear_memory":
+        return {"handled": True, "reply": "Memory cleared.", "kind": "memory", "state": clear_state()}
+
+    return None
+
+
 def build_ai_context() -> str:
     metrics = get_system_metrics()
     return "\n".join(
@@ -856,7 +998,7 @@ def build_ai_context() -> str:
     )
 
 
-def handle_message(text: str) -> dict[str, Any]:
+def handle_message(text: str, source: str = "typed") -> dict[str, Any]:
     record_history("user", text)
     routed = route_command(text)
     if routed["handled"]:
@@ -872,6 +1014,24 @@ def handle_message(text: str) -> dict[str, Any]:
             "kind": routed["kind"],
             "state": public_state(),
         }
+
+    if normalize_text(source) == "voice":
+        intent = classify_voice_intent(text)
+        if intent:
+            executed = execute_intent(intent)
+            if executed:
+                reply = executed.get("reply", "")
+                if reply:
+                    record_history("friday", reply)
+                    record_event(executed["kind"], reply)
+                    rebuild_memory_summary()
+                    save_state()
+                return {
+                    "reply": reply,
+                    "handled": True,
+                    "kind": executed["kind"],
+                    "state": public_state(),
+                }
 
     reply, error = generate_reply(
         text,
@@ -981,9 +1141,10 @@ class FridayHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 return self._send_json({"ok": False, "error": str(exc)}, status=400)
             text = str(payload.get("text", "")).strip()
+            source = str(payload.get("source") or "typed").strip() or "typed"
             if not text:
                 return self._send_json({"ok": False, "error": "Empty message."}, status=400)
-            result = handle_message(text)
+            result = handle_message(text, source=source)
             return self._send_json({"ok": True, **result})
 
         if self.path == "/api/transcribe":
