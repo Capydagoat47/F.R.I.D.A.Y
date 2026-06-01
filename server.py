@@ -41,6 +41,12 @@ JOURNAL_NAMES_FILE = Path(
         r"C:\Users\forho\Downloads\4Ə SUMMATİV QİYMETLERİ\IKINCI YARIM IL\Jurnal Sırası — копия.xlsx",
     )
 )
+JOURNAL_NAMES_DIR = Path(
+    os.getenv(
+        "FRIDAY_JOURNAL_NAMES_DIR",
+        r"C:\Users\forho\Downloads\4Ə SUMMATİV QİYMETLERİ\IKINCI YARIM IL",
+    )
+)
 
 STATE_LOCK = threading.Lock()
 METRICS_LOCK = threading.Lock()
@@ -1106,6 +1112,7 @@ def find_journal_names_file() -> Path | None:
         return JOURNAL_NAMES_FILE
 
     search_roots = [
+        JOURNAL_NAMES_DIR,
         Path.home() / "Downloads",
         Path.home() / "OneDrive" / "Downloads",
         BASE_DIR,
