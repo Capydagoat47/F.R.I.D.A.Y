@@ -1,54 +1,507 @@
 {
   "name": "FRIDAY",
+  "owner_name": "Kenan Novruzov",
+  "owner_title": "Boss",
   "wake_word": "hey friday",
-  "model": "gpt-5",
+  "model": "gpt-4o",
   "cloud_ready": true,
-  "memory_summary": "Notes: test hello | Recent FRIDAY replies: OPEN:settings",
+  "memory_summary": "Owner: Kenan Novruzov (Boss) | Notes: cinematic hud layout | Recent commands: Download MP4 from https://example.com/video.mp4, Use model gpt-4o, Use model gpt-4o | Recent FRIDAY replies: Preferred model set to gpt-4o.",
   "history": [
     {
-      "id": "msg_1780227120296_19560",
+      "id": "msg_1780232606256_19700",
       "role": "user",
-      "text": "could you open settings for me",
-      "ts": "2026-05-31T15:32:00"
+      "text": "how are you?",
+      "ts": "2026-05-31T17:03:26"
     },
     {
-      "id": "msg_1780227120296_19560",
+      "id": "msg_1780232622363_19700",
+      "role": "user",
+      "text": "Bro friday how are you?",
+      "ts": "2026-05-31T17:03:42"
+    },
+    {
+      "id": "msg_1780232624112_19700",
       "role": "friday",
-      "text": "OPEN:settings",
-      "ts": "2026-05-31T15:32:00"
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T17:03:44"
+    },
+    {
+      "id": "msg_1780232628443_19700",
+      "role": "friday",
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T17:03:48"
+    },
+    {
+      "id": "msg_1780232636712_19700",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T17:03:56"
+    },
+    {
+      "id": "msg_1780232636811_19700",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T17:03:56"
+    },
+    {
+      "id": "msg_1780240260450_3612",
+      "role": "user",
+      "text": "hey Friday",
+      "ts": "2026-05-31T19:11:00"
+    },
+    {
+      "id": "msg_1780240260452_3612",
+      "role": "friday",
+      "text": "Online.",
+      "ts": "2026-05-31T19:11:00"
+    },
+    {
+      "id": "msg_1780240276126_3612",
+      "role": "user",
+      "text": "you listening",
+      "ts": "2026-05-31T19:11:16"
+    },
+    {
+      "id": "msg_1780240294000_3612",
+      "role": "friday",
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T19:11:34"
+    },
+    {
+      "id": "msg_1780240295591_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:35"
+    },
+    {
+      "id": "msg_1780240295604_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:35"
+    },
+    {
+      "id": "msg_1780240298447_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:38"
+    },
+    {
+      "id": "msg_1780240298482_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:38"
+    },
+    {
+      "id": "msg_1780240299712_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:39"
+    },
+    {
+      "id": "msg_1780240299748_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:39"
+    },
+    {
+      "id": "msg_1780240299986_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:39"
+    },
+    {
+      "id": "msg_1780240299988_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:39"
+    },
+    {
+      "id": "msg_1780240300237_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300252_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300400_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300422_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300609_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300626_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300802_3612",
+      "role": "user",
+      "text": "Security mode shield",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240300818_3612",
+      "role": "friday",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "msg_1780240302683_3612",
+      "role": "user",
+      "text": "Note: cinematic HUD layout",
+      "ts": "2026-05-31T19:11:42"
+    },
+    {
+      "id": "msg_1780240302709_3612",
+      "role": "friday",
+      "text": "Saved note: cinematic hud layout",
+      "ts": "2026-05-31T19:11:42"
+    },
+    {
+      "id": "msg_1780240305850_3612",
+      "role": "user",
+      "text": "Download MP4 from https://example.com/video.mp4",
+      "ts": "2026-05-31T19:11:45"
+    },
+    {
+      "id": "msg_1780240305851_3612",
+      "role": "friday",
+      "text": "Give me a direct https link.",
+      "ts": "2026-05-31T19:11:45"
+    },
+    {
+      "id": "msg_1780240318098_3612",
+      "role": "user",
+      "text": "give me",
+      "ts": "2026-05-31T19:11:58"
+    },
+    {
+      "id": "msg_1780240322575_3612",
+      "role": "friday",
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T19:12:02"
+    },
+    {
+      "id": "msg_1780240346424_3612",
+      "role": "user",
+      "text": "https://youtube.com/shorts/7ywftRMIxPg?si=O8tcXlry5E18uUdZ",
+      "ts": "2026-05-31T19:12:26"
+    },
+    {
+      "id": "msg_1780240355705_3612",
+      "role": "friday",
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T19:12:35"
+    },
+    {
+      "id": "msg_1780240372935_3612",
+      "role": "user",
+      "text": "Download MP4 from https://example.com/video.mp4",
+      "ts": "2026-05-31T19:12:52"
+    },
+    {
+      "id": "msg_1780240372936_3612",
+      "role": "friday",
+      "text": "Give me a direct https link.",
+      "ts": "2026-05-31T19:12:52"
+    },
+    {
+      "id": "msg_1780240397938_3612",
+      "role": "user",
+      "text": "Use model gpt-4o",
+      "ts": "2026-05-31T19:13:17"
+    },
+    {
+      "id": "msg_1780240397992_3612",
+      "role": "friday",
+      "text": "Preferred model set to gpt-4o.",
+      "ts": "2026-05-31T19:13:17"
+    },
+    {
+      "id": "msg_1780240399364_3612",
+      "role": "user",
+      "text": "Use model gpt-4o",
+      "ts": "2026-05-31T19:13:19"
+    },
+    {
+      "id": "msg_1780240399464_3612",
+      "role": "friday",
+      "text": "Preferred model set to gpt-4o.",
+      "ts": "2026-05-31T19:13:19"
     }
   ],
   "events": [
     {
-      "id": "evt_1780226939747_10776",
-      "kind": "timer",
-      "text": "for 5 minutes scheduled for 300 seconds.",
-      "ts": "2026-05-31T15:28:59",
-      "extra": {
-        "seconds": 300
-      }
+      "id": "evt_1780240299988_3612",
+      "kind": "security",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:39"
     },
     {
-      "id": "evt_1780226939749_10776",
+      "id": "evt_1780240300237_3612",
+      "kind": "security",
+      "text": "Security mode set to shield.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300252_3612",
+      "kind": "security",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300401_3612",
+      "kind": "security",
+      "text": "Security mode set to shield.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300422_3612",
+      "kind": "security",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300610_3612",
+      "kind": "security",
+      "text": "Security mode set to shield.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300626_3612",
+      "kind": "security",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300802_3612",
+      "kind": "security",
+      "text": "Security mode set to shield.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240300818_3612",
+      "kind": "security",
+      "text": "Security shield engaged.",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "evt_1780240302684_3612",
       "kind": "note",
-      "text": "Saved note: test hello",
-      "ts": "2026-05-31T15:28:59"
+      "text": "Saved note: cinematic hud layout",
+      "ts": "2026-05-31T19:11:42"
     },
     {
-      "id": "evt_1780227120296_19560",
-      "kind": "open",
-      "text": "OPEN:settings",
-      "ts": "2026-05-31T15:32:00"
+      "id": "evt_1780240302710_3612",
+      "kind": "note",
+      "text": "Saved note: cinematic hud layout",
+      "ts": "2026-05-31T19:11:42"
+    },
+    {
+      "id": "evt_1780240305851_3612",
+      "kind": "download",
+      "text": "Give me a direct https link.",
+      "ts": "2026-05-31T19:11:45"
+    },
+    {
+      "id": "evt_1780240322575_3612",
+      "kind": "conversation",
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T19:12:02"
+    },
+    {
+      "id": "evt_1780240355705_3612",
+      "kind": "conversation",
+      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
+      "ts": "2026-05-31T19:12:35"
+    },
+    {
+      "id": "evt_1780240372936_3612",
+      "kind": "download",
+      "text": "Give me a direct https link.",
+      "ts": "2026-05-31T19:12:52"
+    },
+    {
+      "id": "evt_1780240397978_3612",
+      "kind": "model",
+      "text": "Preferred model set to gpt-4o.",
+      "ts": "2026-05-31T19:13:17"
+    },
+    {
+      "id": "evt_1780240397999_3612",
+      "kind": "model",
+      "text": "Preferred model set to gpt-4o.",
+      "ts": "2026-05-31T19:13:18"
+    },
+    {
+      "id": "evt_1780240399413_3612",
+      "kind": "model",
+      "text": "Preferred model set to gpt-4o.",
+      "ts": "2026-05-31T19:13:19"
+    },
+    {
+      "id": "evt_1780240399465_3612",
+      "kind": "model",
+      "text": "Preferred model set to gpt-4o.",
+      "ts": "2026-05-31T19:13:19"
     }
   ],
   "notes": [
     {
-      "id": "note_1780226939749_10776",
-      "text": "test hello",
-      "created_at": "2026-05-31T15:28:59"
+      "id": "note_1780240302684_3612",
+      "text": "cinematic hud layout",
+      "created_at": "2026-05-31T19:11:42"
     }
   ],
   "tasks": [],
+  "facts": [],
+  "command_memory": [
+    {
+      "id": "cmd_1780232606256_19700",
+      "text": "how are you?",
+      "source": "typed",
+      "ts": "2026-05-31T17:03:26"
+    },
+    {
+      "id": "cmd_1780232622369_19700",
+      "text": "Bro friday how are you?",
+      "source": "typed",
+      "ts": "2026-05-31T17:03:42"
+    },
+    {
+      "id": "cmd_1780232636712_19700",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T17:03:56"
+    },
+    {
+      "id": "cmd_1780240260450_3612",
+      "text": "hey Friday",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:00"
+    },
+    {
+      "id": "cmd_1780240276126_3612",
+      "text": "you listening",
+      "source": "voice",
+      "ts": "2026-05-31T19:11:16"
+    },
+    {
+      "id": "cmd_1780240295591_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:35"
+    },
+    {
+      "id": "cmd_1780240298447_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:38"
+    },
+    {
+      "id": "cmd_1780240299713_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:39"
+    },
+    {
+      "id": "cmd_1780240299986_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:39"
+    },
+    {
+      "id": "cmd_1780240300237_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "cmd_1780240300400_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "cmd_1780240300610_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "cmd_1780240300802_3612",
+      "text": "Security mode shield",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:40"
+    },
+    {
+      "id": "cmd_1780240302684_3612",
+      "text": "Note: cinematic HUD layout",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:42"
+    },
+    {
+      "id": "cmd_1780240305850_3612",
+      "text": "Download MP4 from https://example.com/video.mp4",
+      "source": "typed",
+      "ts": "2026-05-31T19:11:45"
+    },
+    {
+      "id": "cmd_1780240318098_3612",
+      "text": "give me",
+      "source": "voice",
+      "ts": "2026-05-31T19:11:58"
+    },
+    {
+      "id": "cmd_1780240346424_3612",
+      "text": "https://youtube.com/shorts/7ywftRMIxPg?si=O8tcXlry5E18uUdZ",
+      "source": "typed",
+      "ts": "2026-05-31T19:12:26"
+    },
+    {
+      "id": "cmd_1780240372936_3612",
+      "text": "Download MP4 from https://example.com/video.mp4",
+      "source": "typed",
+      "ts": "2026-05-31T19:12:52"
+    },
+    {
+      "id": "cmd_1780240397954_3612",
+      "text": "Use model gpt-4o",
+      "source": "typed",
+      "ts": "2026-05-31T19:13:17"
+    },
+    {
+      "id": "cmd_1780240399364_3612",
+      "text": "Use model gpt-4o",
+      "source": "typed",
+      "ts": "2026-05-31T19:13:19"
+    }
+  ],
+  "contacts": [],
+  "security_mode": "shield",
+  "power_state": "online",
+  "camera_status": {
+    "camera": "idle",
+    "face": "idle"
+  },
   "modules": [
     {
       "name": "Voice",
@@ -72,5 +525,5 @@
     }
   ],
   "created_at": "2026-05-31T14:48:47",
-  "updated_at": "2026-05-31T15:32:00"
+  "updated_at": "2026-06-01T18:30:31"
 }

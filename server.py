@@ -1,19 +1,27 @@
 from __future__ import annotations
 
 import base64
+import ast
 import json
+import math
 import os
 import re
 import subprocess
 import threading
 import time
 import webbrowser
+import zipfile
 from copy import deepcopy
 from datetime import datetime
+from difflib import SequenceMatcher
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
+from urllib.parse import urlparse
+from xml.etree import ElementTree
+
+import requests
 
 from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, openai_ready, request_json, resolve_model, transcribe_audio_bytes
 
@@ -27,6 +35,7 @@ STATE_FILE = BASE_DIR / "friday_state.json"
 INDEX_FILE = BASE_DIR / "index.html"
 STYLE_FILE = BASE_DIR / "app.css"
 SCRIPT_FILE = BASE_DIR / "app.js"
+JOURNAL_NAMES_FILE = Path(r"C:\Users\forho\Downloads\4Ə SUMMATİV QİYMETLERİ\IKINCI YARIM IL\Jurnal Sırası — копия.xlsx")
 
 STATE_LOCK = threading.Lock()
 METRICS_LOCK = threading.Lock()
@@ -37,15 +46,13 @@ MAX_HISTORY = 40
 MAX_EVENTS = 20
 MAX_NOTES = 24
 MAX_TASKS = 24
+MAX_COMMAND_MEMORY = 20
+MAX_FACTS = 40
+
+OWNER_NAME = "Kenan Novruzov"
+OWNER_TITLE = "Boss"
 
 APP_ALIASES = {
-    "settings": "ms-settings:",
-    "system settings": "ms-settings:",
-    "display settings": "ms-settings:display",
-    "sound settings": "ms-settings:sound",
-    "network settings": "ms-settings:network",
-    "bluetooth settings": "ms-settings:bluetooth",
-    "privacy settings": "ms-settings:privacy",
     "calculator": "calc",
     "calc": "calc",
     "notepad": "notepad",
@@ -59,17 +66,6 @@ APP_ALIASES = {
     "youtube": "https://www.youtube.com",
     "github": "https://github.com",
     "steam": "steam://open/main",
-}
-
-SETTINGS_ALIASES = {
-    "display": "ms-settings:display",
-    "sound": "ms-settings:sound",
-    "network": "ms-settings:network",
-    "bluetooth": "ms-settings:bluetooth",
-    "privacy": "ms-settings:privacy",
-    "apps": "ms-settings:appsfeatures",
-    "power": "ms-settings:powersleep",
-    "about": "ms-settings:about",
 }
 
 MODEL_LOOKUP = sorted(SUPPORTED_MODELS, key=len, reverse=True)
@@ -87,6 +83,8 @@ def fresh_state() -> dict[str, Any]:
     model = resolve_model(os.getenv("FRIDAY_AI_MODEL", DEFAULT_MODEL))
     return {
         "name": "FRIDAY",
+        "owner_name": OWNER_NAME,
+        "owner_title": OWNER_TITLE,
         "wake_word": "hey friday",
         "model": model,
         "cloud_ready": openai_ready(),
@@ -95,6 +93,12 @@ def fresh_state() -> dict[str, Any]:
         "events": [],
         "notes": [],
         "tasks": [],
+        "facts": [],
+        "command_memory": [],
+        "contacts": [],
+        "security_mode": "normal",
+        "power_state": "online",
+        "camera_status": {"camera": "idle", "face": "idle"},
         "modules": [
             {
                 "name": "Voice",
@@ -109,12 +113,22 @@ def fresh_state() -> dict[str, Any]:
             {
                 "name": "Automation",
                 "status": "Ready",
-                "detail": "Local machine actions",
+                "detail": "Planning, app control, and downloads",
             },
             {
                 "name": "Analytics",
                 "status": "Live",
                 "detail": "CPU, GPU, RAM, network, and battery",
+            },
+            {
+                "name": "Security",
+                "status": "Ready",
+                "detail": "Power state, lock, and voice control",
+            },
+            {
+                "name": "Vision",
+                "status": "Idle",
+                "detail": "Camera and face status",
             },
         ],
         "created_at": now_iso(),
@@ -131,6 +145,8 @@ def load_state() -> dict[str, Any]:
             raw = None
         if isinstance(raw, dict):
             for key in (
+                "owner_name",
+                "owner_title",
                 "wake_word",
                 "model",
                 "cloud_ready",
@@ -139,11 +155,19 @@ def load_state() -> dict[str, Any]:
                 "events",
                 "notes",
                 "tasks",
+                "facts",
+                "command_memory",
+                "contacts",
+                "security_mode",
+                "power_state",
+                "camera_status",
                 "modules",
                 "created_at",
             ):
                 if key in raw:
                     state[key] = raw[key]
+    state["owner_name"] = OWNER_NAME
+    state["owner_title"] = OWNER_TITLE
     state["model"] = resolve_model(str(state.get("model") or DEFAULT_MODEL))
     state["cloud_ready"] = openai_ready()
     return state
@@ -173,6 +197,8 @@ def trim_lists() -> None:
     STATE["events"] = (STATE.get("events") or [])[-MAX_EVENTS:]
     STATE["notes"] = (STATE.get("notes") or [])[-MAX_NOTES:]
     STATE["tasks"] = (STATE.get("tasks") or [])[-MAX_TASKS:]
+    STATE["facts"] = (STATE.get("facts") or [])[-MAX_FACTS:]
+    STATE["command_memory"] = (STATE.get("command_memory") or [])[-MAX_COMMAND_MEMORY:]
 
 
 def record_history(role: str, text: str) -> None:
@@ -191,15 +217,33 @@ def record_event(kind: str, text: str, extra: dict[str, Any] | None = None) -> N
     touch_state()
 
 
+def record_command_memory(text: str, source: str) -> None:
+    command_text = text.strip()
+    if not command_text:
+        return
+    STATE.setdefault("command_memory", []).append(
+        {"id": new_id("cmd"), "text": command_text, "source": source, "ts": now_iso()}
+    )
+    trim_lists()
+    touch_state()
+
+
 def build_memory_summary() -> str:
     notes = [item["text"] for item in STATE.get("notes", [])[-5:]]
     tasks = [item["text"] for item in STATE.get("tasks", []) if not item.get("done")][:5]
+    facts = [f"{item.get('key')}: {item.get('value')}" for item in STATE.get("facts", [])[-5:]]
     replies = [item["text"] for item in STATE.get("history", []) if item.get("role") == "friday"][-3:]
+    commands = [item["text"] for item in STATE.get("command_memory", [])[-3:]]
     parts: list[str] = []
+    parts.append(f"Owner: {STATE.get('owner_name', OWNER_NAME)} ({STATE.get('owner_title', OWNER_TITLE)})")
+    if facts:
+        parts.append(f"Facts: {', '.join(facts)}")
     if notes:
         parts.append(f"Notes: {', '.join(notes)}")
     if tasks:
         parts.append(f"Open tasks: {', '.join(tasks)}")
+    if commands:
+        parts.append(f"Recent commands: {', '.join(commands)}")
     if replies:
         parts.append(f"Recent FRIDAY replies: {replies[-1]}")
     return " | ".join(parts) if parts else "No stored memory yet."
@@ -215,7 +259,19 @@ def public_state() -> dict[str, Any]:
     payload["supported_models"] = list(SUPPORTED_MODELS)
     payload["cloud_ready"] = openai_ready()
     payload["state_url"] = LOCAL_URL
+    payload["owner_profile"] = {
+        "name": STATE.get("owner_name", OWNER_NAME),
+        "title": STATE.get("owner_title", OWNER_TITLE),
+    }
     return payload
+
+
+def smart_capabilities() -> str:
+    return (
+        "I can chat, remember facts and notes, track tasks, plan multi-step commands, open apps, search the web, "
+        "summarize local text files, set timers and reminders, capture screenshots, manage contacts, switch AI models, "
+        "report telemetry, and keep owner context ready."
+    )
 
 
 def parse_json_body(raw_body: bytes) -> dict[str, Any]:
@@ -284,6 +340,74 @@ def format_seconds(seconds: int) -> str:
         minutes = seconds // 60
         return f"{minutes} minute" if minutes == 1 else f"{minutes} minutes"
     return f"{seconds} seconds"
+
+
+MATH_NAMES = {
+    "sqrt": math.sqrt,
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "log": math.log,
+    "log10": math.log10,
+    "pi": math.pi,
+    "e": math.e,
+}
+
+
+def _safe_math_eval(node: ast.AST) -> float:
+    if isinstance(node, ast.Expression):
+        return _safe_math_eval(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return float(node.value)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        value = _safe_math_eval(node.operand)
+        return value if isinstance(node.op, ast.UAdd) else -value
+    if isinstance(node, ast.BinOp):
+        left = _safe_math_eval(node.left)
+        right = _safe_math_eval(node.right)
+        if isinstance(node.op, ast.Add):
+            return left + right
+        if isinstance(node.op, ast.Sub):
+            return left - right
+        if isinstance(node.op, ast.Mult):
+            return left * right
+        if isinstance(node.op, ast.Div):
+            return left / right
+        if isinstance(node.op, ast.FloorDiv):
+            return left // right
+        if isinstance(node.op, ast.Mod):
+            return left % right
+        if isinstance(node.op, ast.Pow):
+            if abs(right) > 12:
+                raise ValueError("Exponent too large.")
+            return left**right
+    if isinstance(node, ast.Name) and node.id in MATH_NAMES and isinstance(MATH_NAMES[node.id], (int, float)):
+        return float(MATH_NAMES[node.id])
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        func = MATH_NAMES.get(node.func.id)
+        if callable(func) and len(node.args) <= 2 and not node.keywords:
+            return float(func(*[_safe_math_eval(arg) for arg in node.args]))
+    raise ValueError("Unsupported expression.")
+
+
+def calculate_expression(text: str) -> str | None:
+    cleaned = normalize_text(text)
+    if cleaned.startswith(("calculate ", "compute ", "what is ", "what's ")):
+        expression = re.sub(r"^(?:calculate|compute|what\s+is|what's)\s+", "", text, flags=re.IGNORECASE)
+    elif re.fullmatch(r"[\d\s+\-*/().%^]+", text.strip()):
+        expression = text
+    else:
+        return None
+    expression = expression.replace("^", "**")
+    if not re.fullmatch(r"[\d\s+\-*/().%*,a-zA-Z_]+", expression):
+        return None
+    try:
+        tree = ast.parse(expression, mode="eval")
+        result = _safe_math_eval(tree)
+    except Exception:
+        return None
+    rendered = str(int(result)) if result.is_integer() else f"{result:.8g}"
+    return f"{expression.strip()} = {rendered}"
 
 
 def resolve_path(raw_path: str) -> Path | None:
@@ -461,16 +585,26 @@ def format_note_list() -> str:
     return ", ".join(notes) if notes else "No notes yet."
 
 
+def format_fact_list() -> str:
+    facts = [f"{item.get('key')}: {item.get('value')}" for item in STATE.get("facts", [])[-8:]]
+    return ", ".join(facts) if facts else "No learned facts yet."
+
+
 def build_context() -> str:
     metrics = get_system_metrics()
     return "\n".join(
         [
             f"System name: {STATE.get('name', 'FRIDAY')}",
+            f"Owner: {STATE.get('owner_name', OWNER_NAME)} ({STATE.get('owner_title', OWNER_TITLE)})",
             f"Wake word: {STATE.get('wake_word', 'hey friday')}",
             f"Preferred model: {STATE.get('model', DEFAULT_MODEL)}",
             f"Memory summary: {STATE.get('memory_summary', 'No stored memory yet.')}",
+            f"Learned facts: {format_fact_list()}",
             f"Notes: {format_note_list()}",
             f"Open tasks: {format_task_list()}",
+            f"Capabilities: {smart_capabilities()}",
+            f"Security mode: {STATE.get('security_mode', 'normal')}",
+            f"Power state: {STATE.get('power_state', 'online')}",
             f"Telemetry: {format_metrics_summary(metrics)}",
         ]
     )
@@ -503,6 +637,60 @@ def add_note(text: str) -> str:
     return f"Saved note: {note}"
 
 
+def remember_fact(key: str, value: str) -> str:
+    clean_key = normalize_text(key).strip()
+    clean_value = value.strip()
+    if not clean_key or not clean_value:
+        return "Tell me what fact to remember."
+
+    facts = STATE.setdefault("facts", [])
+    for item in facts:
+        if normalize_text(str(item.get("key", ""))) == clean_key:
+            item["key"] = key.strip()
+            item["value"] = clean_value
+            item["updated_at"] = now_iso()
+            rebuild_memory_summary()
+            record_event("memory", f"Updated fact: {item['key']}.")
+            save_state()
+            return f"Remembered: {item['key']} is {clean_value}."
+
+    facts.append({"id": new_id("fact"), "key": key.strip(), "value": clean_value, "created_at": now_iso()})
+    trim_lists()
+    rebuild_memory_summary()
+    record_event("memory", f"Learned fact: {key.strip()}.")
+    save_state()
+    return f"Remembered: {key.strip()} is {clean_value}."
+
+
+def extract_fact_from_text(text: str) -> tuple[str, str] | None:
+    cleaned = text.strip().strip(".")
+    patterns = (
+        r"^(?:remember|note)\s+(?:that\s+)?(?P<key>.+?)\s+(?:is|are|=)\s+(?P<value>.+)$",
+        r"^(?:my|the)\s+(?P<key>.+?)\s+(?:is|are|=)\s+(?P<value>.+)$",
+    )
+    for pattern in patterns:
+        match = re.match(pattern, cleaned, flags=re.IGNORECASE)
+        if match:
+            key = match.group("key").strip()
+            value = match.group("value").strip()
+            if key and value and len(key) <= 80 and len(value) <= 220:
+                return key, value
+    return None
+
+
+def recall_memory(query: str = "") -> str:
+    lowered = normalize_text(query)
+    facts = STATE.get("facts", [])
+    if lowered:
+        for item in facts:
+            key = normalize_text(str(item.get("key", "")))
+            value = str(item.get("value") or "").strip()
+            if key and value and (key in lowered or lowered in key):
+                return f"{item.get('key')} is {value}."
+    summary = STATE.get("memory_summary") or build_memory_summary()
+    return summary if summary and summary != "No stored memory yet." else "No stored memory yet."
+
+
 def add_task(text: str) -> str:
     task = text.strip()
     if not task:
@@ -520,13 +708,29 @@ def add_task(text: str) -> str:
 def complete_task(target: str) -> str:
     lowered = normalize_text(target)
     tasks = STATE.get("tasks", [])
+    best_item: dict[str, Any] | None = None
+    best_score = 0.0
     for item in tasks:
-        if lowered == item.get("id") or lowered == normalize_text(item.get("text", "")):
+        task_text = normalize_text(item.get("text", ""))
+        if lowered == item.get("id") or lowered == task_text:
             item["done"] = True
             rebuild_memory_summary()
             record_event("task", f"Completed task: {item['text']}")
             save_state()
             return f"Marked complete: {item['text']}"
+        if lowered and task_text:
+            score = SequenceMatcher(None, lowered, task_text).ratio()
+            if lowered in task_text or task_text in lowered:
+                score = max(score, 0.88)
+            if score > best_score:
+                best_score = score
+                best_item = item
+    if best_item and best_score >= 0.72:
+        best_item["done"] = True
+        rebuild_memory_summary()
+        record_event("task", f"Completed task: {best_item['text']}")
+        save_state()
+        return f"Marked complete: {best_item['text']}"
     return "I could not find that task."
 
 
@@ -535,11 +739,11 @@ def open_target(target: str) -> str:
     if not cleaned:
         return "I need a target to open."
     lookup = APP_ALIASES.get(cleaned.lower(), cleaned)
-    if lookup.startswith(("http://", "https://", "ms-settings:", "steam://")):
+    if lookup.startswith(("http://", "https://", "steam://")):
         try:
-          os.startfile(lookup)
+            os.startfile(lookup)
         except Exception:
-          webbrowser.open(lookup)
+            webbrowser.open(lookup)
         return f"Opening {cleaned}."
     candidate = Path(lookup).expanduser()
     if candidate.exists():
@@ -570,18 +774,6 @@ def close_target(target: str) -> str:
     return f"Closing {cleaned}."
 
 
-def open_settings(section: str | None = None) -> str:
-    if section:
-        target = SETTINGS_ALIASES.get(normalize_text(section), "ms-settings:")
-    else:
-        target = "ms-settings:"
-    try:
-        os.startfile(target)
-    except Exception:
-        webbrowser.open(target)
-    return f"Opening settings for {section or 'system'}."
-
-
 def lock_pc() -> str:
     subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], capture_output=True)
     return "Locking the screen."
@@ -594,6 +786,255 @@ def search_web(query: str) -> str:
     url = "https://www.google.com/search?q=" + quote_plus(term)
     webbrowser.open(url)
     return f"Searching the web for {term}."
+
+
+def capture_screenshot() -> str:
+    captures_dir = BASE_DIR / "captures"
+    captures_dir.mkdir(exist_ok=True)
+    filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    path = captures_dir / filename
+    script = f"""
+Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
+$bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+$bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+$graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+$bitmap.Save('{str(path).replace("'", "''")}', [System.Drawing.Imaging.ImageFormat]::Png)
+$graphics.Dispose()
+$bitmap.Dispose()
+Write-Output '{path.name}'
+"""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if result.returncode == 0:
+            record_event("screenshot", f"Captured {path.name}.")
+            save_state()
+            return f"Screenshot saved to captures/{path.name}."
+        error = (result.stderr or result.stdout or "").strip() or "Screenshot failed."
+    except Exception as exc:
+        error = str(exc)
+    return error
+
+
+def download_direct_file(url: str) -> str:
+    cleaned = url.strip().strip('"').strip("'")
+    url_match = re.search(r"https?://[^\s\"']+", cleaned)
+    if url_match:
+        cleaned = url_match.group(0)
+    if not cleaned.startswith(("http://", "https://")):
+        return "Give me a direct https link."
+    downloads_dir = BASE_DIR / "downloads"
+    downloads_dir.mkdir(exist_ok=True)
+    parsed = urlparse(cleaned)
+    filename = Path(parsed.path).name or f"download_{int(time.time())}"
+    if "." not in filename:
+        filename += ".mp4" if "mp4" in cleaned.lower() else ".bin"
+    target = downloads_dir / filename
+    try:
+        response = requests.get(cleaned, stream=True, timeout=45)
+        response.raise_for_status()
+        with target.open("wb") as handle:
+            for chunk in response.iter_content(chunk_size=1024 * 256):
+                if chunk:
+                    handle.write(chunk)
+        record_event("download", f"Saved {target.name}.", {"source": cleaned})
+        save_state()
+        return f"Downloaded {target.name} to downloads."
+    except Exception as exc:
+        return f"Download failed: {exc}"
+
+
+def set_security_mode(mode: str) -> str:
+    normalized = normalize_text(mode)
+    if normalized in {"normal", "standard", "ready"}:
+        normalized = "normal"
+    elif normalized in {"shield", "secure", "security"}:
+        normalized = "shield"
+    elif normalized in {"silent", "quiet"}:
+        normalized = "silent"
+    elif normalized in {"lockdown", "lock"}:
+        normalized = "lockdown"
+    else:
+        return "Use normal, shield, silent, or lockdown."
+
+    STATE["security_mode"] = normalized
+    if normalized == "lockdown":
+        STATE["power_state"] = "standby"
+        try:
+            lock_pc()
+        except Exception:
+            pass
+    touch_state()
+    record_event("security", f"Security mode set to {normalized}.")
+    save_state()
+    if normalized == "lockdown":
+        return "Security lockdown engaged. Screen locked."
+    if normalized == "shield":
+        return "Security shield engaged."
+    if normalized == "silent":
+        return "Silent security mode engaged."
+    return "Security mode set to normal."
+
+
+def set_power_state(mode: str) -> str:
+    normalized = normalize_text(mode)
+    if normalized in {"power up", "up", "online", "resume", "wake"}:
+        normalized = "online"
+    elif normalized in {"power down", "down", "standby", "sleep"}:
+        normalized = "standby"
+    else:
+        return "Use power up or power down."
+
+    STATE["power_state"] = normalized
+    touch_state()
+    record_event("power", f"Power state set to {normalized}.")
+    save_state()
+    if normalized == "online":
+        return "FRIDAY is online."
+    return "FRIDAY is in standby."
+
+
+def control_pc_power(action: str) -> str:
+    normalized = normalize_text(action)
+    if normalized in {"lock", "secure"}:
+        return lock_pc()
+    if normalized in {"sleep", "hibernate", "shutdown", "restart", "logoff"}:
+        commands = {
+            "sleep": "rundll32.exe powrprof.dll,SetSuspendState 0,1,0",
+            "hibernate": "shutdown /h",
+            "shutdown": "shutdown /s /t 0",
+            "restart": "shutdown /r /t 0",
+            "logoff": "shutdown /l",
+        }
+        command = commands.get(normalized)
+        if not command:
+            return "Unsupported power action."
+        try:
+            subprocess.run(command, shell=True, capture_output=True, text=True, timeout=20)
+            record_event("power", f"PC power action: {normalized}.")
+            save_state()
+            return f"PC {normalized} command sent."
+        except Exception as exc:
+            return f"Power action failed: {exc}"
+    return "Use sleep, hibernate, shutdown, restart, logoff, or lock."
+
+
+def camera_face_status() -> str:
+    camera = STATE.get("camera_status") or {}
+    camera_state = str(camera.get("camera") or "idle")
+    face_state = str(camera.get("face") or "idle")
+    return f"Camera {camera_state}. Face status {face_state}."
+
+
+def update_camera_face_status(camera_state: str | None = None, face_state: str | None = None) -> None:
+    current = STATE.setdefault("camera_status", {"camera": "idle", "face": "idle"})
+    if camera_state is not None:
+        current["camera"] = camera_state
+    if face_state is not None:
+        current["face"] = face_state
+    touch_state()
+    save_state()
+
+
+def find_contact(target: str) -> dict[str, Any] | None:
+    lookup = normalize_text(target)
+    if not lookup:
+        return None
+    for item in STATE.get("contacts", []):
+        if lookup == normalize_text(str(item.get("name", ""))):
+            return item
+    return None
+
+
+def add_contact(name: str, phone: str | None = None, email: str | None = None) -> str:
+    clean_name = name.strip()
+    if not clean_name:
+        return "Give me a contact name."
+    contacts = STATE.setdefault("contacts", [])
+    existing = find_contact(clean_name)
+    payload = {
+        "id": new_id("contact"),
+        "name": clean_name,
+        "phone": (phone or "").strip() or None,
+        "email": (email or "").strip() or None,
+        "created_at": now_iso(),
+    }
+    if existing:
+        existing.update({key: value for key, value in payload.items() if value is not None})
+        reply = f"Updated contact {clean_name}."
+    else:
+        contacts.append(payload)
+        reply = f"Saved contact {clean_name}."
+    trim_lists()
+    touch_state()
+    record_event("contact", reply)
+    save_state()
+    return reply
+
+
+def call_contact(target: str) -> str:
+    contact = find_contact(target)
+    if contact:
+        phone = str(contact.get("phone") or "").strip()
+        if phone:
+            try:
+                os.startfile(f"tel:{phone}")
+            except Exception:
+                webbrowser.open(f"tel:{phone}")
+            return f"Calling {contact.get('name', target)}."
+        return f"{contact.get('name', target)} does not have a phone number saved."
+    clean = target.strip()
+    phone_match = re.search(r"(\+?\d[\d\s().-]{4,}\d)", clean)
+    if phone_match:
+        phone = phone_match.group(1).strip()
+        try:
+            os.startfile(f"tel:{phone}")
+        except Exception:
+            webbrowser.open(f"tel:{phone}")
+        return f"Calling {phone}."
+    return "Save the contact name and number first, or give me a phone number."
+
+
+def message_contact(target: str) -> str:
+    contact = find_contact(target)
+    if contact:
+        email = str(contact.get("email") or "").strip()
+        phone = str(contact.get("phone") or "").strip()
+        if email:
+            try:
+                os.startfile(f"mailto:{email}")
+            except Exception:
+                webbrowser.open(f"mailto:{email}")
+            return f"Messaging {contact.get('name', target)} by email."
+        if phone:
+            try:
+                os.startfile(f"sms:{phone}")
+            except Exception:
+                webbrowser.open(f"sms:{phone}")
+            return f"Messaging {contact.get('name', target)}."
+        return f"{contact.get('name', target)} does not have a message route saved."
+    clean = target.strip()
+    if "@" in clean:
+        try:
+            os.startfile(f"mailto:{clean}")
+        except Exception:
+            webbrowser.open(f"mailto:{clean}")
+        return f"Opening a mail message to {clean}."
+    phone_match = re.search(r"(\+?\d[\d\s().-]{4,}\d)", clean)
+    if phone_match:
+        phone = phone_match.group(1).strip()
+        try:
+            os.startfile(f"sms:{phone}")
+        except Exception:
+            webbrowser.open(f"sms:{phone}")
+        return f"Opening a message to {phone}."
+    return "Save the contact name first, or give me an email address or phone number."
 
 
 def read_text_file(path_text: str) -> tuple[str | None, str | None]:
@@ -621,6 +1062,117 @@ def read_text_file(path_text: str) -> tuple[str | None, str | None]:
     except Exception as exc:
         return None, str(exc)
     return content[:12000], None
+
+
+def _xlsx_shared_strings(archive: zipfile.ZipFile) -> list[str]:
+    try:
+        raw_xml = archive.read("xl/sharedStrings.xml")
+    except KeyError:
+        return []
+    root = ElementTree.fromstring(raw_xml)
+    namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    strings: list[str] = []
+    for item in root.findall("x:si", namespace):
+        pieces = [node.text or "" for node in item.findall(".//x:t", namespace)]
+        strings.append("".join(pieces).strip())
+    return strings
+
+
+def _xlsx_cell_text(cell: ElementTree.Element, shared_strings: list[str]) -> str:
+    namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    cell_type = cell.attrib.get("t")
+    value_node = cell.find("x:v", namespace)
+    if cell_type == "inlineStr":
+        pieces = [node.text or "" for node in cell.findall(".//x:t", namespace)]
+        return " ".join("".join(pieces).split())
+    if value_node is None or value_node.text is None:
+        return ""
+    raw_value = value_node.text.strip()
+    if cell_type == "s":
+        try:
+            return shared_strings[int(raw_value)]
+        except Exception:
+            return ""
+    return raw_value
+
+
+def load_journal_kid_names(path: Path = JOURNAL_NAMES_FILE) -> tuple[list[str], str | None]:
+    if not path.exists():
+        return [], f"Jurnal faylını tapa bilmədim: {path}"
+    try:
+        with zipfile.ZipFile(path) as archive:
+            workbook_xml = ElementTree.fromstring(archive.read("xl/workbook.xml"))
+            rels_xml = ElementTree.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+            workbook_ns = {
+                "x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+                "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+            }
+            rels_ns = {"r": "http://schemas.openxmlformats.org/package/2006/relationships"}
+            first_sheet = workbook_xml.find("x:sheets/x:sheet", workbook_ns)
+            if first_sheet is None:
+                return [], "Jurnalda vərəq tapmadım."
+            rel_id = first_sheet.attrib.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id")
+            target = None
+            for rel in rels_xml.findall("r:Relationship", rels_ns):
+                if rel.attrib.get("Id") == rel_id:
+                    target = rel.attrib.get("Target")
+                    break
+            sheet_path = "xl/" + (target or "worksheets/sheet1.xml").lstrip("/")
+            shared_strings = _xlsx_shared_strings(archive)
+            sheet_xml = ElementTree.fromstring(archive.read(sheet_path))
+    except Exception as exc:
+        return [], f"Jurnalı oxuya bilmədim: {exc}"
+
+    namespace = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    names: list[str] = []
+    seen: set[str] = set()
+    for row in sheet_xml.findall(".//x:sheetData/x:row", namespace):
+        first_cell = None
+        for cell in row.findall("x:c", namespace):
+            ref = cell.attrib.get("r", "")
+            if ref.startswith("A"):
+                first_cell = cell
+                break
+        if first_cell is None:
+            continue
+        name = _xlsx_cell_text(first_cell, shared_strings)
+        name = " ".join(name.replace("`", "").split())
+        normalized = normalize_text(name)
+        if name and normalized not in seen:
+            seen.add(normalized)
+            names.append(name)
+    return names, None
+
+
+def format_kid_names_azerbaijani(names: list[str]) -> str:
+    if not names:
+        return "Boss, jurnalda uşaq adı tapmadım."
+    ordinal_words = [
+        "Birinci",
+        "İkinci",
+        "Üçüncü",
+        "Dördüncü",
+        "Beşinci",
+        "Altıncı",
+        "Yeddinci",
+        "Səkkizinci",
+        "Doqquzuncu",
+        "Onuncu",
+    ]
+    entries: list[str] = []
+    for index, name in enumerate(names, start=1):
+        label = ordinal_words[index - 1] if index <= len(ordinal_words) else f"{index}-ci"
+        entries.append(f"{label}: {name}")
+    return f"Əlbəttə, Boss. Jurnaldakı uşaqların adları belədir:\n" + "\n".join(entries)
+
+
+def tell_kid_names() -> str:
+    names, error = load_journal_kid_names()
+    if error:
+        return error
+    record_event("journal", f"Read {len(names)} names from journal.")
+    save_state()
+    return format_kid_names_azerbaijani(names)
 
 
 def summarize_document(path_text: str) -> str:
@@ -688,15 +1240,240 @@ def parse_model_choice(text: str) -> str | None:
     return None
 
 
-def route_command(raw_text: str) -> dict[str, Any]:
+def should_plan_command(text: str) -> bool:
+    lowered = normalize_text(strip_wake_word(text))
+    if not lowered:
+        return False
+    if any(marker in lowered for marker in (" and then ", " then ", " after that ", " followed by ", ";")):
+        return True
+    verbs = (
+        "open",
+        "launch",
+        "start",
+        "search",
+        "note",
+        "task",
+        "timer",
+        "remind",
+        "call",
+        "message",
+        "text",
+        "screenshot",
+        "download",
+        "lock",
+        "power",
+        "sleep",
+        "shutdown",
+        "restart",
+        "read",
+        "summarize",
+        "camera",
+        "face",
+    )
+    hits = sum(1 for verb in verbs if re.search(rf"\b{re.escape(verb)}\b", lowered))
+    return hits >= 2 and len(lowered.split()) >= 6
+
+
+def build_command_plan(text: str, source: str = "typed") -> list[str]:
+    cleaned = strip_wake_word(text)
+    lowered = normalize_text(cleaned)
+    if not should_plan_command(cleaned):
+        return [cleaned]
+
+    if openai_ready():
+        prompt = "\n".join(
+            [
+                "You are FRIDAY's command planner.",
+                "Break the user request into ordered local actions.",
+                "Return only JSON with this shape:",
+                '{"steps":["step 1","step 2"],"summary":"short summary"}',
+                "Each step must be a concise command FRIDAY can execute locally.",
+                "Do not include commentary or markdown.",
+                "",
+                f"User text: {cleaned}",
+            ]
+        )
+        payload, error = request_json(prompt, model=STATE.get("model", DEFAULT_MODEL))
+        if payload and not error:
+            raw_steps = payload.get("steps")
+            if isinstance(raw_steps, list):
+                steps = [str(item).strip() for item in raw_steps if str(item).strip()]
+                if len(steps) >= 2:
+                    return steps
+
+    parts = re.split(
+        r"\b(?:and then|then|after that|followed by|next)\b|;",
+        lowered or cleaned,
+        flags=re.IGNORECASE,
+    )
+    steps = [part.strip(" ,.") for part in parts if part.strip(" ,.")]
+    if len(steps) < 2 and " and " in lowered:
+        and_parts = re.split(r"\s+and\s+", lowered or cleaned, flags=re.IGNORECASE)
+        and_steps = [part.strip(" ,.") for part in and_parts if part.strip(" ,.")]
+        if len(and_steps) >= 2:
+            steps = and_steps
+    if len(steps) >= 2:
+        return steps
+    return [cleaned]
+
+
+def execute_command_plan(steps: list[str], source: str = "typed") -> dict[str, Any]:
+    replies: list[str] = []
+    handled_any = False
+    for index, step in enumerate(steps, start=1):
+        routed = route_command(step, source=source, allow_planning=False)
+        handled_any = handled_any or routed.get("handled", False)
+        reply = str(routed.get("reply") or "").strip()
+        if reply:
+            replies.append(f"Step {index}: {reply}")
+    if not replies:
+        return {"handled": False, "reply": "", "kind": "conversation"}
+    record_event("plan", f"Executed {len(steps)} planned steps.")
+    return {"handled": handled_any, "reply": " | ".join(replies), "kind": "plan"}
+
+
+def route_voice_command(raw_text: str) -> dict[str, Any] | None:
+    text = strip_wake_word(raw_text)
+    lowered = normalize_text(text)
+    if not lowered:
+        return None
+
+    lowered = re.sub(
+        r"^(?:could you|can you|would you|will you|please|please could you|please can you|please would you)\s+",
+        "",
+        lowered,
+    ).strip()
+
+    open_match = re.search(
+        r"\b(?:open|launch|start|run|bring up|show)\b\s+(?P<target>.+)$",
+        lowered,
+    )
+    if open_match:
+        target = open_match.group("target").strip()
+        target = re.sub(r"\bfor me\b$", "", target).strip()
+        target = re.sub(r"^(?:the|my)\s+", "", target).strip()
+        if not target:
+            return {"handled": True, "reply": "I need a target to open.", "kind": "open"}
+        return {"handled": True, "reply": open_target(target), "kind": "open"}
+
+    close_match = re.search(
+        r"\b(?:close|quit|stop|exit)\b\s+(?P<target>.+)$",
+        lowered,
+    )
+    if close_match:
+        target = close_match.group("target").strip()
+        target = re.sub(r"\bfor me\b$", "", target).strip()
+        target = re.sub(r"^(?:the|my)\s+", "", target).strip()
+        if not target:
+            return {"handled": True, "reply": "I need a target to close.", "kind": "close"}
+        return {"handled": True, "reply": close_target(target), "kind": "close"}
+
+    search_match = re.search(
+        r"\b(?:search|look up|find)\b(?:\s+(?:the\s+)?(?:internet|web|online))?(?:\s+for)?\s+(?P<query>.+)$",
+        lowered,
+    )
+    if search_match:
+        query = search_match.group("query").strip()
+        query = re.sub(r"\bfor me\b$", "", query).strip()
+        query = re.sub(r"^(?:the|my)\s+", "", query).strip()
+        if query:
+            return {"handled": True, "reply": search_web(query), "kind": "search"}
+
+    if lowered.startswith(("call ", "message ", "text ")):
+        target = text.split(" ", 1)[1] if " " in text else ""
+        if lowered.startswith("call "):
+            return {"handled": True, "reply": call_contact(target), "kind": "contact"}
+        return {"handled": True, "reply": message_contact(target), "kind": "contact"}
+
+    timer_match = re.search(
+        r"\b(?:(?:set|start)\s+)?(?:a\s+)?(?P<kind>timer|reminder)\b(?:\s+for)?\s+(?P<label>.+)$",
+        lowered,
+    )
+    if timer_match:
+        label_text = timer_match.group("label").strip()
+        seconds = parse_duration_seconds(label_text)
+        if seconds is None:
+            seconds = parse_duration_seconds(lowered)
+        if seconds and seconds > 0:
+            reminder_mode = timer_match.group("kind") == "reminder"
+            clean_label = re.sub(r"\b(?:in|for)\s+\d+\s*(seconds?|secs?|second|sec|minutes?|mins?|minute|min|hours?|hrs?|hour|hr)\b.*$", "", label_text).strip()
+            return {
+                "handled": True,
+                "reply": schedule_timer(seconds, clean_label or "Reminder", reminder=reminder_mode),
+                "kind": "timer",
+            }
+
+    return None
+
+
+def route_command(raw_text: str, source: str = "typed", allow_planning: bool = True) -> dict[str, Any]:
     original = (raw_text or "").strip()
     text = strip_wake_word(original)
     lowered = normalize_text(text)
+    if allow_planning and should_plan_command(original):
+        planned_steps = build_command_plan(original, source=source)
+        if len(planned_steps) > 1:
+            return execute_command_plan(planned_steps, source=source)
+    if normalize_text(source) == "voice":
+        voice_routed = route_voice_command(original)
+        if voice_routed is not None:
+            return voice_routed
     if not lowered:
         return {"handled": True, "reply": "Online.", "kind": "greeting"}
 
     if lowered in {"hi", "hello", "hey", "good morning", "good evening", "good night"}:
         return {"handled": True, "reply": "Online and ready.", "kind": "greeting"}
+
+    if lowered in {"help", "commands", "capabilities"} or any(
+        phrase in lowered for phrase in ("what can you do", "show commands", "list commands")
+    ):
+        return {"handled": True, "reply": smart_capabilities(), "kind": "help"}
+
+    if any(
+        phrase in lowered
+        for phrase in (
+            "tell me kids names",
+            "tell me the kids name",
+            "tell me the kids names",
+            "kids names",
+            "kid names",
+            "student names",
+            "students names",
+            "children names",
+            "jurnal sirasi",
+            "jurnal sırası",
+            "usaqlarin adlari",
+            "uşaqların adları",
+            "usaqlarin adlarini de",
+            "uşaqların adlarını de",
+            "sagirdlerin adlari",
+            "şagirdlərin adları",
+            "sagirdlerin adlarini de",
+            "şagirdlərin adlarını de",
+        )
+    ):
+        return {"handled": True, "reply": tell_kid_names(), "kind": "journal"}
+
+    if lowered in {"who am i", "what is my name", "who's the boss", "who is the boss", "boss mode"}:
+        owner_name = STATE.get("owner_name", OWNER_NAME)
+        return {"handled": True, "reply": f"You are {owner_name}, {OWNER_TITLE}.", "kind": "owner"}
+
+    if lowered.startswith(("what do you remember", "recall ", "memory summary", "what is my ", "what's my ")):
+        query = text
+        for prefix in ("what do you remember about ", "what do you remember", "recall ", "memory summary", "what is my ", "what's my "):
+            if lowered.startswith(prefix):
+                query = text[len(prefix) :]
+                break
+        return {"handled": True, "reply": recall_memory(query), "kind": "memory"}
+
+    math_reply = calculate_expression(text)
+    if math_reply:
+        return {"handled": True, "reply": math_reply, "kind": "math"}
+
+    fact = extract_fact_from_text(text)
+    if fact:
+        key, value = fact
+        return {"handled": True, "reply": remember_fact(key, value), "kind": "memory"}
 
     if lowered.startswith(("set model to ", "switch model to ", "use model ", "model ")):
         candidate = parse_model_choice(lowered)
@@ -766,24 +1543,12 @@ def route_command(raw_text: str) -> dict[str, Any]:
         STATE["events"] = []
         STATE["notes"] = []
         STATE["tasks"] = []
+        STATE["facts"] = []
+        STATE["command_memory"] = []
         STATE["memory_summary"] = "No stored memory yet."
         touch_state()
         save_state()
         return {"handled": True, "reply": "Memory cleared.", "kind": "memory"}
-
-    if lowered.startswith(("open settings", "open system settings", "settings")):
-        section = None
-        if "display" in lowered:
-            section = "display"
-        elif "sound" in lowered:
-            section = "sound"
-        elif "network" in lowered:
-            section = "network"
-        elif "bluetooth" in lowered:
-            section = "bluetooth"
-        elif "privacy" in lowered:
-            section = "privacy"
-        return {"handled": True, "reply": open_settings(section), "kind": "open"}
 
     if lowered.startswith(("open ", "launch ", "start ")):
         target = text.split(" ", 1)[1] if " " in text else ""
@@ -800,6 +1565,56 @@ def route_command(raw_text: str) -> dict[str, Any]:
                 query = text[len(prefix) :]
                 break
         return {"handled": True, "reply": search_web(query), "kind": "search"}
+
+    if lowered.startswith(("call ", "message ", "text ")):
+        target = text.split(" ", 1)[1] if " " in text else ""
+        if lowered.startswith("call "):
+            return {"handled": True, "reply": call_contact(target), "kind": "contact"}
+        return {"handled": True, "reply": message_contact(target), "kind": "contact"}
+
+    if lowered.startswith(("download mp4 ", "download direct link ", "download file ", "save mp4 ")):
+        source_text = text.split(" ", 2)[-1] if " " in text else ""
+        url_match = re.search(r"https?://\S+", text)
+        url = url_match.group(0) if url_match else source_text
+        return {"handled": True, "reply": download_direct_file(url), "kind": "download"}
+
+    if re.search(r"\b(?:screenshot|capture\s+(?:the\s+)?screen|take\s+(?:a\s+)?screenshot|grab\s+screen)\b", lowered):
+        return {"handled": True, "reply": capture_screenshot(), "kind": "screenshot"}
+
+    if lowered.startswith(("camera status", "face status", "vision status")):
+        return {"handled": True, "reply": camera_face_status(), "kind": "vision"}
+
+    if lowered.startswith(("set security mode ", "security mode ", "lockdown mode ", "shield mode ", "silent mode ")):
+        mode = re.sub(
+            r"^(?:set\s+)?(?:security\s+mode|lockdown\s+mode|shield\s+mode|silent\s+mode)\s+",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        ).strip()
+        return {"handled": True, "reply": set_security_mode(mode), "kind": "security"}
+
+    if lowered in {"power down", "power up", "standby", "resume"}:
+        return {"handled": True, "reply": set_power_state(lowered), "kind": "power"}
+
+    if lowered.startswith(("sleep pc", "hibernate pc", "shutdown pc", "restart pc", "logoff pc")):
+        action = lowered.split(" ", 1)[0]
+        return {"handled": True, "reply": control_pc_power(action), "kind": "power"}
+
+    if lowered.startswith(("add contact ", "save contact ", "remember contact ")):
+        payload = text.split(" ", 2)[2] if len(text.split(" ", 2)) >= 3 else ""
+        name = payload
+        phone = None
+        email = None
+        if ";" in payload:
+            first, *rest = payload.split(";")
+            name = first.strip()
+            for chunk in rest:
+                piece = chunk.strip()
+                if piece.startswith("phone="):
+                    phone = piece.split("=", 1)[1].strip()
+                elif piece.startswith("email="):
+                    email = piece.split("=", 1)[1].strip()
+        return {"handled": True, "reply": add_contact(name, phone=phone, email=email), "kind": "contact"}
 
     if lowered.startswith(("read file ", "summarize file ", "summarize document ", "summarize ")):
         path_text = text
@@ -855,6 +1670,13 @@ VOICE_INTENT_KINDS = {
     "lock",
     "wake_word",
     "clear_memory",
+    "security",
+    "power",
+    "download",
+    "screenshot",
+    "contact",
+    "vision",
+    "owner",
     "conversation",
 }
 
@@ -869,7 +1691,7 @@ def classify_voice_intent(raw_text: str) -> dict[str, Any] | None:
             "You are FRIDAY's voice intent parser.",
             "Decide whether the user's spoken text is a local operating-system command or normal conversation.",
             "Return only JSON with these keys:",
-            "kind: one of open, close, search, note, task, timer, reminder, model, time, metrics, lock, wake_word, clear_memory, conversation",
+            "kind: one of open, close, search, note, task, timer, reminder, model, time, metrics, lock, wake_word, clear_memory, security, power, download, screenshot, contact, vision, owner, conversation",
             "target: optional string for apps, files, or model names",
             "query: optional string for searches",
             "text: optional string for note/task content",
@@ -878,6 +1700,7 @@ def classify_voice_intent(raw_text: str) -> dict[str, Any] | None:
             "reminder: optional boolean",
             "model: optional string when switching models",
             "wake_word: optional string when changing wake word",
+            "action: optional string for contact, security, or power actions",
             "",
             f"User text: {text}",
         ]
@@ -967,6 +1790,46 @@ def execute_intent(intent: dict[str, Any]) -> dict[str, Any] | None:
     if kind == "lock":
         return {"handled": True, "reply": lock_pc(), "kind": "lock"}
 
+    if kind == "security":
+        mode = str(intent.get("action") or intent.get("target") or intent.get("text") or "").strip()
+        if not mode:
+            return {"handled": True, "reply": "Use normal, shield, silent, or lockdown.", "kind": "security"}
+        return {"handled": True, "reply": set_security_mode(mode), "kind": "security"}
+
+    if kind == "power":
+        action = str(intent.get("action") or intent.get("target") or intent.get("text") or "").strip()
+        if not action:
+            return {"handled": True, "reply": "Use power up, power down, sleep, restart, shutdown, hibernate, or logoff.", "kind": "power"}
+        normalized_action = normalize_text(action)
+        if normalized_action in {"power up", "up", "online", "resume", "wake", "power down", "down", "standby", "sleep"}:
+            return {"handled": True, "reply": set_power_state(action), "kind": "power"}
+        return {"handled": True, "reply": control_pc_power(action), "kind": "power"}
+
+    if kind == "download":
+        source_url = str(intent.get("target") or intent.get("query") or intent.get("text") or "").strip()
+        if not source_url:
+            return {"handled": True, "reply": "Give me a direct link to download.", "kind": "download"}
+        return {"handled": True, "reply": download_direct_file(source_url), "kind": "download"}
+
+    if kind == "screenshot":
+        return {"handled": True, "reply": capture_screenshot(), "kind": "screenshot"}
+
+    if kind == "contact":
+        action = normalize_text(str(intent.get("action") or "call"))
+        target = str(intent.get("target") or intent.get("query") or intent.get("text") or "").strip()
+        if not target:
+            return {"handled": True, "reply": "Give me a contact name, phone, or email.", "kind": "contact"}
+        if action == "message":
+            return {"handled": True, "reply": message_contact(target), "kind": "contact"}
+        return {"handled": True, "reply": call_contact(target), "kind": "contact"}
+
+    if kind == "vision":
+        return {"handled": True, "reply": camera_face_status(), "kind": "vision"}
+
+    if kind == "owner":
+        owner_name = STATE.get("owner_name", OWNER_NAME)
+        return {"handled": True, "reply": f"You are {owner_name}, {OWNER_TITLE}.", "kind": "owner"}
+
     if kind == "wake_word":
         wake_word = str(intent.get("wake_word") or intent.get("target") or intent.get("text") or "").strip().lower()
         if not wake_word:
@@ -988,19 +1851,25 @@ def build_ai_context() -> str:
     return "\n".join(
         [
             f"System: {STATE.get('name', 'FRIDAY')}",
+            f"Owner: {STATE.get('owner_name', OWNER_NAME)} ({STATE.get('owner_title', OWNER_TITLE)})",
             f"Wake word: {STATE.get('wake_word', 'hey friday')}",
             f"Preferred model: {STATE.get('model', DEFAULT_MODEL)}",
             f"Memory summary: {STATE.get('memory_summary', 'No stored memory yet.')}",
+            f"Learned facts: {format_fact_list()}",
             f"Telemetry: {format_metrics_summary(metrics)}",
             f"Open tasks: {format_task_list()}",
             f"Notes: {format_note_list()}",
+            f"Capabilities: {smart_capabilities()}",
+            f"Security mode: {STATE.get('security_mode', 'normal')}",
+            f"Power state: {STATE.get('power_state', 'online')}",
         ]
     )
 
 
 def handle_message(text: str, source: str = "typed") -> dict[str, Any]:
     record_history("user", text)
-    routed = route_command(text)
+    record_command_memory(text, source)
+    routed = route_command(text, source=source)
     if routed["handled"]:
         reply = routed["reply"]
         if reply:
@@ -1059,6 +1928,8 @@ def clear_state() -> dict[str, Any]:
     STATE["events"] = []
     STATE["notes"] = []
     STATE["tasks"] = []
+    STATE["facts"] = []
+    STATE["command_memory"] = []
     STATE["memory_summary"] = "No stored memory yet."
     touch_state()
     save_state()

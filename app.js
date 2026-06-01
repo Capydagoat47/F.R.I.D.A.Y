@@ -42,11 +42,16 @@ const state = {
 };
 
 const QUICK_COMMANDS = [
-  { title: "Open settings", text: "Open system settings", detail: "Launch the control panel." },
+  { title: "Natural command", text: "Open browser and search the internet for Friday voice tech", detail: "Try a multi-step command." },
   { title: "Search web", text: "Search the internet for the latest FRIDAY voice tech", detail: "Open a browser search." },
   { title: "Lock PC", text: "Lock PC", detail: "Secure the desktop immediately." },
+  { title: "Power down", text: "Power down", detail: "Put FRIDAY in standby." },
   { title: "Start timer", text: "Start timer for 5 minutes", detail: "Set a quick countdown." },
+  { title: "Screenshot", text: "Take a screenshot", detail: "Capture the desktop." },
+  { title: "Download MP4", text: "Download MP4 from https://example.com/video.mp4", detail: "Direct-link downloader." },
   { title: "Add note", text: "Note: cinematic HUD layout", detail: "Store a memory entry." },
+  { title: "Security mode", text: "Security mode shield", detail: "Tighten FRIDAY controls." },
+  { title: "Call contact", text: "Call Kenan on 5551234", detail: "Launch a phone action." },
   { title: "Summarize file", text: "Summarize file C:\\\\Users\\\\forho\\\\Documents\\\\report.txt", detail: "Read a document." },
   { title: "Switch model", text: "Use model gpt-4o", detail: "Change the active model." },
   { title: "Clear memory", text: "Clear memory", detail: "Reset notes, tasks, and history." },
@@ -70,10 +75,13 @@ const els = {
   cloudChip: id("cloudChip"),
   modelChip: id("modelChip"),
   wakeChip: id("wakeChip"),
+  ownerChip: id("ownerChip"),
   voiceChip: id("voiceChip"),
   listenChip: id("listenChip"),
   telemetryChip: id("telemetryChip"),
   memoryChip: id("memoryChip"),
+  powerChip: id("powerChip"),
+  securityChip: id("securityChip"),
   timeChip: id("timeChip"),
   statusLine: id("statusLine"),
   subLine: id("subLine"),
@@ -281,15 +289,26 @@ function updateChips() {
   els.cloudChip.textContent = cloud;
   els.modelChip.textContent = data.model || "gpt-5";
   els.wakeChip.textContent = data.wake_word ? data.wake_word.replace(/^hey\s+/i, "Hey ") : "Hey Friday";
+  const ownerName = data.owner_name || data.owner_profile?.name || "Kenan Novruzov";
+  const ownerTitle = data.owner_title || data.owner_profile?.title || "Boss";
+  if (els.ownerChip) {
+    els.ownerChip.textContent = `${ownerTitle}: ${ownerName}`;
+  }
   els.voiceChip.textContent = state.speaking ? "Speaking" : state.listening ? "Listening" : "Voice idle";
   els.listenChip.textContent = state.wakeArmed ? "Wake word armed" : "Direct capture";
   els.telemetryChip.textContent = "Telemetry live";
   els.memoryChip.textContent = `${(data.notes || []).length} notes`;
+  if (els.powerChip) {
+    els.powerChip.textContent = `Power ${data.power_state || "online"}`;
+  }
+  if (els.securityChip) {
+    els.securityChip.textContent = `Security ${data.security_mode || "normal"}`;
+  }
   els.timeChip.textContent = formatClock();
   els.memorySummary.textContent = memorySummary();
   els.metricsSummary.textContent = summarizeMetrics(state.metrics);
   els.voiceSummary.textContent = voiceSummaryText();
-  els.quickSummary.textContent = "Open settings, search, note, task, timer, or summarize a file.";
+  els.quickSummary.textContent = "Natural-language requests, multi-step planning, screenshots, downloads, contacts, power, and security.";
   els.statusLine.textContent = state.speaking
     ? "FRIDAY is speaking."
     : state.listening
@@ -329,13 +348,14 @@ function voiceSummaryText() {
   if (!("speechSynthesis" in window)) {
     return "Speech synthesis unavailable in this browser.";
   }
+  const ownerName = currentState().owner_name || currentState().owner_profile?.name || "Kenan Novruzov";
   const voice = state.selectedVoice ? `Selected voice: ${state.selectedVoice.name}` : "Browser voice ready.";
   const capture = state.listening
     ? state.transcribing
       ? "Transcribing microphone input."
       : "Microphone capture armed."
     : "Microphone capture ready.";
-  return `${voice} ${capture}`;
+  return `${voice} ${capture} Boss profile: ${ownerName}.`;
 }
 
 function eventLabel(item) {
@@ -438,6 +458,7 @@ function renderRightPanel() {
   const battery = metrics.battery || {};
   const gpu = metrics.gpu || {};
   const network = metrics.network || {};
+  const vision = data.camera_status || {};
   const processes = metrics.processes || [];
   const weather = state.weather;
   const uptime = metrics.uptime || "—";
@@ -486,6 +507,12 @@ function renderRightPanel() {
       </article>
 
       <article class="card">
+        <div class="section-title">Vision</div>
+        <div class="metric-value">Camera ${vision.camera || "idle"}</div>
+        <div class="meta-row">Face ${vision.face || "idle"} • Voice planner ready</div>
+      </article>
+
+      <article class="card">
         <div class="section-title">System Time</div>
         <div class="metric-value">${formatDate()} • ${formatClock()}</div>
         <div class="meta-row">Uptime ${uptime}</div>
@@ -524,7 +551,7 @@ function renderCenterSummary() {
   els.memorySummary.textContent = data.memory_summary || "No stored memory yet.";
   els.metricsSummary.textContent = summarizeMetrics(state.metrics);
   els.voiceSummary.textContent = voiceSummaryText();
-  els.quickSummary.textContent = "Open settings, search, note, task, timer, or summarize a file.";
+  els.quickSummary.textContent = "Natural-language requests, multi-step planning, screenshots, downloads, contacts, power, and security.";
 }
 
 function renderAll() {

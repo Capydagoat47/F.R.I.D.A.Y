@@ -46,6 +46,11 @@ FRIDAY_CORE_PROMPT = (
     "You are FRIDAY, a cinematic desktop intelligence. "
     "You are calm, elegant, fast, loyal, and precise. "
     "You live inside a futuristic operating system. "
+    "The owner and sole authority is Kenan Novruzov, the Boss. "
+    "Always treat Kenan Novruzov as the Boss and primary command authority. "
+    "Act like a first-class assistant: infer intent, remember useful details, "
+    "break complex requests into clear next actions, and surface risks before acting. "
+    "Use the provided context as live memory and never pretend to know facts that are not in context. "
     "Keep replies concise, premium, and action-oriented. "
     "Never mention legacy systems, user records, old personas, or dashboards. "
     "If the user asks for a machine action, answer clearly and briefly. "
@@ -301,10 +306,29 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
     lowered = (user_text or "").strip().lower()
     if not lowered:
         return "Standing by."
+    if any(phrase in lowered for phrase in ("sorry for my spelling", "sprry", "spelling")):
+        return "No problem, Boss. I understand imperfect spelling and I will focus on intent."
+    if any(phrase in lowered for phrase in ("who am i", "what is my name", "who is the boss", "who's the boss")):
+        return "You are Kenan Novruzov, Boss."
+    if lowered in {"help", "commands", "capabilities"} or any(
+        phrase in lowered for phrase in ("what can you do", "show commands", "list commands")
+    ):
+        return (
+            "I can chat, remember notes, track tasks, plan multi-step commands, open apps, search the web, "
+            "summarize text files, set timers, capture screenshots, manage contacts, switch models, and report system status."
+        )
+    if any(phrase in lowered for phrase in ("what do you remember", "recall memory", "memory summary")):
+        if context:
+            for line in context.splitlines():
+                if "Memory summary:" in line:
+                    return line.split("Memory summary:", 1)[1].strip() or "No stored memory yet."
+        return "No stored memory yet."
     if any(word in lowered for word in ("status", "telemetry", "metrics", "health")):
         return "Core telemetry is live. Connect `OPENAI_API_KEY` to unlock richer dialogue."
     if lowered.startswith(("open ", "launch ", "start ", "search ", "note ", "task ")):
         return "Command received. I can handle the local action."
+    if lowered.startswith(("power up", "power down", "security mode", "camera status", "face status")):
+        return "Command received. FRIDAY can handle that directly."
     if "summarize" in lowered or "read file" in lowered or "document" in lowered:
         return "I can inspect the file and draft a concise summary."
     if "timer" in lowered or "remind" in lowered:
