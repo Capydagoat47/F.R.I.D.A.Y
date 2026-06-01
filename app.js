@@ -894,6 +894,23 @@ async function resumeVoiceRuntime() {
     return;
   }
   state.voiceResumeAfterSpeech = false;
+  state.recognition = state.recognition || initRecognition();
+  if (state.recognition) {
+    try {
+      state.voiceFallbackActive = false;
+      await startMicAnalysis({ captureAudio: false });
+      state.recognition.start();
+      updateVoiceState("Listening", "listening");
+      return;
+    } catch {
+      try {
+        state.recognition.stop();
+      } catch {
+        // ignored
+      }
+    }
+  }
+  state.voiceFallbackActive = true;
   try {
     await startMicAnalysis({ captureAudio: true });
     updateVoiceState("Listening", "listening");
@@ -991,6 +1008,11 @@ function stripWakeWord(text) {
   return cleaned.replace(/^[,!.:\-\s]+/, "").trim();
 }
 
+function looksLikeDirectCommand(text) {
+  const cleaned = String(text || "").toLowerCase().replace(/['’]/g, " ");
+  return /\b(tell|open|search|find|note|remember|task|timer|remind|status|calculate|compute|kids?|students?|children|jurnal|uşaq|usaq|şagird|sagird)\b/.test(cleaned);
+}
+
 async function sendCommand(textOverride = null, source = "typed") {
   const input = (textOverride ?? els.commandInput.value).trim();
   if (!input) {
@@ -1047,7 +1069,7 @@ function initRecognition() {
   const recognition = new Recognition();
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = "en-US";
+  recognition.lang = navigator.language || "en-US";
   recognition.onresult = (event) => {
     let transcript = "";
     let finalText = "";
@@ -1067,6 +1089,8 @@ function initRecognition() {
       if (state.wakeArmed) {
         if (/hey\s+friday|^friday\b/i.test(finalText) && cleaned) {
           sendCommand(cleaned, "voice");
+        } else if (looksLikeDirectCommand(finalText)) {
+          sendCommand(finalText.trim(), "voice");
         }
       } else if (cleaned) {
         sendCommand(cleaned, "voice");
@@ -1102,10 +1126,26 @@ function initRecognition() {
 async function toggleVoice() {
   if (!state.listening) {
     state.listening = true;
-    state.voiceFallbackActive = true;
+    state.voiceFallbackActive = false;
     updateVoiceState("Listening", "listening");
-    updateTranscript("Recording microphone input...", true);
+    updateTranscript("Listening for your command...", true);
     playTone(760, 0.07, "sine", 0.03);
+    state.recognition = state.recognition || initRecognition();
+    if (state.recognition) {
+      try {
+        await startMicAnalysis({ captureAudio: false });
+        state.recognition.start();
+        showToast("Voice", "Fast voice recognition activated.");
+        return;
+      } catch {
+        try {
+          state.recognition.stop();
+        } catch {
+          // ignored
+        }
+      }
+    }
+    state.voiceFallbackActive = true;
     try {
       await startMicAnalysis({ captureAudio: true });
       showToast("Voice", "Microphone capture activated.");
@@ -1127,6 +1167,13 @@ async function toggleVoice() {
     state.voiceResumeAfterSpeech = false;
     state.voiceFallbackActive = false;
     updateVoiceState("Voice idle", "idle");
+    try {
+      if (state.recognition) {
+        state.recognition.stop();
+      }
+    } catch {
+      // ignored
+    }
     stopMicAnalysis();
     if (shouldFinalize) {
       await finalizeVoiceCapture("manual");

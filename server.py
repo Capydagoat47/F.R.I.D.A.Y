@@ -35,7 +35,12 @@ STATE_FILE = BASE_DIR / "friday_state.json"
 INDEX_FILE = BASE_DIR / "index.html"
 STYLE_FILE = BASE_DIR / "app.css"
 SCRIPT_FILE = BASE_DIR / "app.js"
-JOURNAL_NAMES_FILE = Path(r"C:\Users\forho\Downloads\4Ə SUMMATİV QİYMETLERİ\IKINCI YARIM IL\Jurnal Sırası — копия.xlsx")
+JOURNAL_NAMES_FILE = Path(
+    os.getenv(
+        "FRIDAY_JOURNAL_NAMES_FILE",
+        r"C:\Users\forho\Downloads\4Ə SUMMATİV QİYMETLERİ\IKINCI YARIM IL\Jurnal Sırası — копия.xlsx",
+    )
+)
 
 STATE_LOCK = threading.Lock()
 METRICS_LOCK = threading.Lock()
@@ -1096,7 +1101,43 @@ def _xlsx_cell_text(cell: ElementTree.Element, shared_strings: list[str]) -> str
     return raw_value
 
 
-def load_journal_kid_names(path: Path = JOURNAL_NAMES_FILE) -> tuple[list[str], str | None]:
+def find_journal_names_file() -> Path | None:
+    if JOURNAL_NAMES_FILE.exists():
+        return JOURNAL_NAMES_FILE
+
+    search_roots = [
+        Path.home() / "Downloads",
+        Path.home() / "OneDrive" / "Downloads",
+        BASE_DIR,
+    ]
+    best_match: Path | None = None
+    for root in search_roots:
+        if not root.exists():
+            continue
+        try:
+            files = root.rglob("*.xlsx") if root != BASE_DIR else root.glob("*.xlsx")
+            for candidate in files:
+                normalized_name = normalize_text(candidate.stem.replace("ı", "i").replace("İ", "i"))
+                if "jurnal" in normalized_name and (
+                    "sirasi" in normalized_name
+                    or "siras" in normalized_name
+                    or "sira" in normalized_name
+                ):
+                    return candidate
+                if best_match is None and "jurnal" in normalized_name:
+                    best_match = candidate
+        except Exception:
+            continue
+    return best_match
+
+
+def load_journal_kid_names(path: Path | None = None) -> tuple[list[str], str | None]:
+    path = path or find_journal_names_file()
+    if path is None:
+        return [], (
+            "Boss, jurnal faylını tapa bilmədim. Faylı Downloads qovluğunda saxla, "
+            "ya da FRIDAY_JOURNAL_NAMES_FILE ilə dəqiq yolu göstər."
+        )
     if not path.exists():
         return [], f"Jurnal faylını tapa bilmədim: {path}"
     try:
@@ -1173,6 +1214,37 @@ def tell_kid_names() -> str:
     record_event("journal", f"Read {len(names)} names from journal.")
     save_state()
     return format_kid_names_azerbaijani(names)
+
+
+def is_kid_names_request(text: str) -> bool:
+    lowered = normalize_text(text.replace("'", " ").replace("ı", "i").replace("İ", "i"))
+    phrases = (
+        "tell me kids names",
+        "tell me kid names",
+        "tell me the kids name",
+        "tell me the kids names",
+        "kids names",
+        "kid names",
+        "student names",
+        "students names",
+        "children names",
+        "jurnal sirasi",
+        "jurnal sirası",
+        "jurnal sira",
+        "usaqlarin adlari",
+        "usaqlarin adlarini de",
+        "uşaqlarin adlari",
+        "uşaqlarin adlarini de",
+        "sagirdlerin adlari",
+        "sagirdlerin adlarini de",
+        "şagirdlərin adlari",
+        "şagirdlərin adlarini de",
+    )
+    if any(phrase in lowered for phrase in phrases):
+        return True
+    has_name_word = any(word in lowered for word in ("name", "names", "ad", "adlari", "adlarini"))
+    has_student_word = any(word in lowered for word in ("kid", "kids", "student", "students", "child", "children", "usaq", "uşaq", "sagird", "şagird"))
+    return has_name_word and has_student_word
 
 
 def summarize_document(path_text: str) -> str:
@@ -1429,29 +1501,7 @@ def route_command(raw_text: str, source: str = "typed", allow_planning: bool = T
     ):
         return {"handled": True, "reply": smart_capabilities(), "kind": "help"}
 
-    if any(
-        phrase in lowered
-        for phrase in (
-            "tell me kids names",
-            "tell me the kids name",
-            "tell me the kids names",
-            "kids names",
-            "kid names",
-            "student names",
-            "students names",
-            "children names",
-            "jurnal sirasi",
-            "jurnal sırası",
-            "usaqlarin adlari",
-            "uşaqların adları",
-            "usaqlarin adlarini de",
-            "uşaqların adlarını de",
-            "sagirdlerin adlari",
-            "şagirdlərin adları",
-            "sagirdlerin adlarini de",
-            "şagirdlərin adlarını de",
-        )
-    ):
+    if is_kid_names_request(text):
         return {"handled": True, "reply": tell_kid_names(), "kind": "journal"}
 
     if lowered in {"who am i", "what is my name", "who's the boss", "who is the boss", "boss mode"}:
