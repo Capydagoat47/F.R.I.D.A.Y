@@ -5,32 +5,8 @@
   "wake_word": "hey friday",
   "model": "gpt-4o",
   "cloud_ready": true,
-  "memory_summary": "Owner: Kenan Novruzov (Boss) | Notes: cinematic hud layout | Recent commands: Download MP4 from https://example.com/video.mp4, Use model gpt-4o, Use model gpt-4o | Recent FRIDAY replies: Preferred model set to gpt-4o.",
+  "memory_summary": "Owner: Kenan Novruzov (Boss) | Notes: cinematic hud layout | Recent commands: Use model gpt-4o, system status, open calculator | Recent FRIDAY replies: For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target.",
   "history": [
-    {
-      "id": "msg_1780232606256_19700",
-      "role": "user",
-      "text": "how are you?",
-      "ts": "2026-05-31T17:03:26"
-    },
-    {
-      "id": "msg_1780232622363_19700",
-      "role": "user",
-      "text": "Bro friday how are you?",
-      "ts": "2026-05-31T17:03:42"
-    },
-    {
-      "id": "msg_1780232624112_19700",
-      "role": "friday",
-      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
-      "ts": "2026-05-31T17:03:44"
-    },
-    {
-      "id": "msg_1780232628443_19700",
-      "role": "friday",
-      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
-      "ts": "2026-05-31T17:03:48"
-    },
     {
       "id": "msg_1780232636712_19700",
       "role": "user",
@@ -246,15 +222,33 @@
       "role": "friday",
       "text": "Preferred model set to gpt-4o.",
       "ts": "2026-05-31T19:13:19"
+    },
+    {
+      "id": "msg_1782072583477_13132",
+      "role": "user",
+      "text": "system status",
+      "ts": "2026-06-22T00:09:43"
+    },
+    {
+      "id": "msg_1782072587228_13132",
+      "role": "friday",
+      "text": "RAM 0 / 0 GB",
+      "ts": "2026-06-22T00:09:47"
+    },
+    {
+      "id": "msg_1782072606514_12132",
+      "role": "user",
+      "text": "open calculator",
+      "ts": "2026-06-22T00:10:06"
+    },
+    {
+      "id": "msg_1782072606516_12132",
+      "role": "friday",
+      "text": "For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target.",
+      "ts": "2026-06-22T00:10:06"
     }
   ],
   "events": [
-    {
-      "id": "evt_1780240299988_3612",
-      "kind": "security",
-      "text": "Security shield engaged.",
-      "ts": "2026-05-31T19:11:39"
-    },
     {
       "id": "evt_1780240300237_3612",
       "kind": "security",
@@ -362,6 +356,18 @@
       "kind": "model",
       "text": "Preferred model set to gpt-4o.",
       "ts": "2026-05-31T19:13:19"
+    },
+    {
+      "id": "evt_1782072587228_13132",
+      "kind": "metrics",
+      "text": "RAM 0 / 0 GB",
+      "ts": "2026-06-22T00:09:47"
+    },
+    {
+      "id": "evt_1782072606516_12132",
+      "kind": "open",
+      "text": "For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target.",
+      "ts": "2026-06-22T00:10:06"
     }
   ],
   "notes": [
@@ -374,18 +380,6 @@
   "tasks": [],
   "facts": [],
   "command_memory": [
-    {
-      "id": "cmd_1780232606256_19700",
-      "text": "how are you?",
-      "source": "typed",
-      "ts": "2026-05-31T17:03:26"
-    },
-    {
-      "id": "cmd_1780232622369_19700",
-      "text": "Bro friday how are you?",
-      "source": "typed",
-      "ts": "2026-05-31T17:03:42"
-    },
     {
       "id": "cmd_1780232636712_19700",
       "text": "Security mode shield",
@@ -493,6 +487,18 @@
       "text": "Use model gpt-4o",
       "source": "typed",
       "ts": "2026-05-31T19:13:19"
+    },
+    {
+      "id": "cmd_1782072583477_13132",
+      "text": "system status",
+      "source": "typed",
+      "ts": "2026-06-22T00:09:43"
+    },
+    {
+      "id": "cmd_1782072606514_12132",
+      "text": "open calculator",
+      "source": "typed",
+      "ts": "2026-06-22T00:10:06"
     }
   ],
   "contacts": [],
@@ -525,5 +531,5 @@
     }
   ],
   "created_at": "2026-05-31T14:48:47",
-  "updated_at": "2026-06-01T18:39:24"
+  "updated_at": "2026-06-22T00:10:06"
 }

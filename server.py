@@ -35,6 +35,9 @@ STATE_FILE = BASE_DIR / "friday_state.json"
 INDEX_FILE = BASE_DIR / "index.html"
 STYLE_FILE = BASE_DIR / "app.css"
 SCRIPT_FILE = BASE_DIR / "app.js"
+MANIFEST_FILE = BASE_DIR / "manifest.json"
+SERVICE_WORKER_FILE = BASE_DIR / "service-worker.js"
+ICON_FILE = BASE_DIR / "icons" / "friday-icon.svg"
 JOURNAL_NAMES_FILE = Path(
     os.getenv(
         "FRIDAY_JOURNAL_NAMES_FILE",
@@ -64,19 +67,16 @@ OWNER_NAME = "Kenan Novruzov"
 OWNER_TITLE = "Boss"
 
 APP_ALIASES = {
-    "calculator": "calc",
-    "calc": "calc",
-    "notepad": "notepad",
-    "paint": "mspaint",
-    "terminal": "wt",
-    "command prompt": "cmd",
-    "file explorer": "explorer",
-    "explorer": "explorer",
     "browser": "https://www.google.com",
     "google": "https://www.google.com",
     "youtube": "https://www.youtube.com",
     "github": "https://github.com",
-    "steam": "steam://open/main",
+    "gmail": "https://mail.google.com",
+    "calendar": "https://calendar.google.com",
+    "maps": "https://maps.google.com",
+    "drive": "https://drive.google.com",
+    "chatgpt": "https://chatgpt.com",
+    "openai": "https://platform.openai.com",
 }
 
 MODEL_LOOKUP = sorted(SUPPORTED_MODELS, key=len, reverse=True)
@@ -279,9 +279,8 @@ def public_state() -> dict[str, Any]:
 
 def smart_capabilities() -> str:
     return (
-        "I can chat, remember facts and notes, track tasks, plan multi-step commands, open apps, search the web, "
-        "summarize local text files, set timers and reminders, capture screenshots, manage contacts, switch AI models, "
-        "report telemetry, and keep owner context ready."
+        "I can chat, remember facts and notes, track tasks, plan multi-step commands, open safe web links, search the web, "
+        "set timers and reminders, switch AI models, report telemetry, run simulated HUD modes, and keep owner context ready."
     )
 
 
@@ -750,44 +749,32 @@ def open_target(target: str) -> str:
     if not cleaned:
         return "I need a target to open."
     lookup = APP_ALIASES.get(cleaned.lower(), cleaned)
-    if lookup.startswith(("http://", "https://", "steam://")):
+    if lookup.startswith(("http://", "https://")):
         try:
-            os.startfile(lookup)
-        except Exception:
             webbrowser.open(lookup)
-        return f"Opening {cleaned}."
-    candidate = Path(lookup).expanduser()
-    if candidate.exists():
-        try:
-            os.startfile(str(candidate))
-            return f"Opening {candidate.name}."
         except Exception:
-            pass
-    try:
-        os.startfile(lookup)
-        return f"Launching {cleaned}."
-    except Exception:
-        subprocess.Popen(f'start "" "{lookup}"', shell=True)
-        return f"Launching {cleaned}."
+            return "I could not open that web link."
+        return f"Opening {cleaned}."
+    if "." in lookup and " " not in lookup:
+        url = f"https://{lookup}"
+        webbrowser.open(url)
+        return f"Opening {url}."
+    return "For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target."
 
 
 def close_target(target: str) -> str:
     cleaned = target.strip().strip('"').strip("'")
     if not cleaned:
         return "I need a target to close."
-    base_name = Path(cleaned).name
-    if base_name.lower().endswith(".exe"):
-        candidates = [base_name]
-    else:
-        candidates = [base_name, f"{base_name}.exe"]
-    for candidate in candidates:
-        subprocess.run(["taskkill", "/IM", candidate, "/F"], capture_output=True, text=True)
-    return f"Closing {cleaned}."
+    return f"Simulated close command acknowledged for {cleaned}. I do not terminate OS processes from the web HUD."
 
 
 def lock_pc() -> str:
-    subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], capture_output=True)
-    return "Locking the screen."
+    STATE["security_mode"] = "shield"
+    touch_state()
+    record_event("security", "Simulated HUD lock engaged.")
+    save_state()
+    return "Simulated HUD lock engaged. OS-level locking is disabled for safety."
 
 
 def search_web(query: str) -> str:
@@ -877,15 +864,12 @@ def set_security_mode(mode: str) -> str:
     STATE["security_mode"] = normalized
     if normalized == "lockdown":
         STATE["power_state"] = "standby"
-        try:
-            lock_pc()
-        except Exception:
-            pass
+        record_event("security", "Lockdown simulation armed. OS lock skipped by safe-command policy.")
     touch_state()
     record_event("security", f"Security mode set to {normalized}.")
     save_state()
     if normalized == "lockdown":
-        return "Security lockdown engaged. Screen locked."
+        return "Security lockdown simulation engaged."
     if normalized == "shield":
         return "Security shield engaged."
     if normalized == "silent":
@@ -916,23 +900,9 @@ def control_pc_power(action: str) -> str:
     if normalized in {"lock", "secure"}:
         return lock_pc()
     if normalized in {"sleep", "hibernate", "shutdown", "restart", "logoff"}:
-        commands = {
-            "sleep": "rundll32.exe powrprof.dll,SetSuspendState 0,1,0",
-            "hibernate": "shutdown /h",
-            "shutdown": "shutdown /s /t 0",
-            "restart": "shutdown /r /t 0",
-            "logoff": "shutdown /l",
-        }
-        command = commands.get(normalized)
-        if not command:
-            return "Unsupported power action."
-        try:
-            subprocess.run(command, shell=True, capture_output=True, text=True, timeout=20)
-            record_event("power", f"PC power action: {normalized}.")
-            save_state()
-            return f"PC {normalized} command sent."
-        except Exception as exc:
-            return f"Power action failed: {exc}"
+        record_event("power", f"Simulated PC power action: {normalized}.")
+        save_state()
+        return f"Simulated {normalized} acknowledged. OS power commands are disabled for safety."
     return "Use sleep, hibernate, shutdown, restart, logoff, or lock."
 
 
@@ -2032,12 +2002,18 @@ class FridayHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_GET(self) -> None:
-        if self.path == "/":
+        if self.path in {"/", "/index.html"}:
             return serve_file(self, INDEX_FILE, "text/html; charset=utf-8")
         if self.path == "/app.css":
             return serve_file(self, STYLE_FILE, "text/css; charset=utf-8")
         if self.path == "/app.js":
             return serve_file(self, SCRIPT_FILE, "application/javascript; charset=utf-8")
+        if self.path == "/manifest.json":
+            return serve_file(self, MANIFEST_FILE, "application/manifest+json; charset=utf-8")
+        if self.path == "/service-worker.js":
+            return serve_file(self, SERVICE_WORKER_FILE, "application/javascript; charset=utf-8")
+        if self.path == "/icons/friday-icon.svg":
+            return serve_file(self, ICON_FILE, "image/svg+xml; charset=utf-8")
         if self.path == "/api/health":
             return self._send_json(
                 {

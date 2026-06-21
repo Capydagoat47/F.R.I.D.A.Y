@@ -1,0 +1,17 @@
+{
+  "name": "friday-ai-hud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-ready FRIDAY AI HUD PWA and Capacitor wrapper.",
+  "scripts": {
+    "start": "python server.py",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/cli": "^6.2.0",
+    "@capacitor/core": "^6.2.0"
+  }
+}

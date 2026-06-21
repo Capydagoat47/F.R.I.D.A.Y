@@ -39,13 +39,15 @@ const state = {
   camera: null,
   threeGroup: null,
   threeOrb: null,
+  lastVoiceDispatchAt: 0,
+  reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false,
 };
 
 const QUICK_COMMANDS = [
   { title: "Natural command", text: "Open browser and search the internet for Friday voice tech", detail: "Try a multi-step command." },
   { title: "Search web", text: "Search the internet for the latest FRIDAY voice tech", detail: "Open a browser search." },
-  { title: "Lock PC", text: "Lock PC", detail: "Secure the desktop immediately." },
-  { title: "Power down", text: "Power down", detail: "Put FRIDAY in standby." },
+  { title: "Open web app", text: "Open YouTube", detail: "Launch an approved web link." },
+  { title: "Power down", text: "Power down", detail: "Put the HUD in standby." },
   { title: "Start timer", text: "Start timer for 5 minutes", detail: "Set a quick countdown." },
   { title: "Screenshot", text: "Take a screenshot", detail: "Capture the desktop." },
   { title: "Download MP4", text: "Download MP4 from https://example.com/video.mp4", detail: "Direct-link downloader." },
@@ -288,7 +290,7 @@ function updateChips() {
   const cloud = data.cloud_ready ? "Cloud ready" : "Cloud offline";
   els.cloudChip.textContent = cloud;
   els.modelChip.textContent = data.model || "gpt-5";
-  els.wakeChip.textContent = data.wake_word ? data.wake_word.replace(/^hey\s+/i, "Hey ") : "Hey Friday";
+  els.wakeChip.textContent = state.wakeArmed ? "FRIDAY" : "Direct";
   const ownerName = data.owner_name || data.owner_profile?.name || "Kenan Novruzov";
   const ownerTitle = data.owner_title || data.owner_profile?.title || "Boss";
   if (els.ownerChip) {
@@ -308,7 +310,7 @@ function updateChips() {
   els.memorySummary.textContent = memorySummary();
   els.metricsSummary.textContent = summarizeMetrics(state.metrics);
   els.voiceSummary.textContent = voiceSummaryText();
-  els.quickSummary.textContent = "Natural-language requests, multi-step planning, screenshots, downloads, contacts, power, and security.";
+  els.quickSummary.textContent = "Natural-language requests, safe web links, web search, timers, memory, telemetry, power states, and simulated HUD security.";
   els.statusLine.textContent = state.speaking
     ? "FRIDAY is speaking."
     : state.listening
@@ -745,6 +747,7 @@ function stopAmbientTone() {
 
 function updateVoiceState(label, mode = "idle") {
   els.voiceChip.textContent = label;
+  document.body.dataset.fridayMode = mode;
   setModeEnergy(mode);
 }
 
@@ -946,11 +949,17 @@ async function finalizeVoiceCapture(reason = "silence") {
     }
     const cleaned = stripWakeWord(transcript);
     updateTranscript(transcript, true);
-    if (!cleaned) {
-      showToast("Voice", "Say Hey Friday, then the command.");
+    if (state.wakeArmed && !isWakeWordDetected(transcript)) {
+      showToast("Wake word", "Say FRIDAY, then the command.");
       if (state.listening) {
         await resumeVoiceRuntime();
       }
+      return;
+    }
+    if (!cleaned) {
+      showToast("Wake word", "Wake word detected. Listening for your command.");
+      updateVoiceState("Listening", "listening");
+      await resumeVoiceRuntime();
       return;
     }
     await sendCommand(cleaned, "voice");
@@ -1011,6 +1020,41 @@ function stripWakeWord(text) {
 function looksLikeDirectCommand(text) {
   const cleaned = String(text || "").toLowerCase().replace(/['’]/g, " ");
   return /\b(tell|open|search|find|note|remember|task|timer|remind|status|calculate|compute|kids?|students?|children|jurnal|uşaq|usaq|şagird|sagird)\b/.test(cleaned);
+}
+
+function isWakeWordDetected(text) {
+  return /\b(?:hey\s+)?friday\b/i.test(String(text || ""));
+}
+
+function dispatchVoiceText(finalText) {
+  const spoken = String(finalText || "").trim();
+  if (!spoken) {
+    return;
+  }
+  const now = Date.now();
+  if (now - state.lastVoiceDispatchAt < 900) {
+    return;
+  }
+  const cleaned = stripWakeWord(spoken);
+  if (state.wakeArmed) {
+    if (isWakeWordDetected(spoken)) {
+      state.lastVoiceDispatchAt = now;
+      updateVoiceState("Wake word detected", "listening");
+      document.body.classList.add("wake-flash");
+      setTimeout(() => document.body.classList.remove("wake-flash"), 950);
+      playTone(920, 0.08, "sine", 0.04);
+      if (cleaned) {
+        sendCommand(cleaned, "voice");
+      } else {
+        updateTranscript("FRIDAY wake word detected. Listening...", true);
+      }
+    }
+    return;
+  }
+  if (cleaned || looksLikeDirectCommand(spoken)) {
+    state.lastVoiceDispatchAt = now;
+    sendCommand(cleaned || spoken, "voice");
+  }
 }
 
 async function sendCommand(textOverride = null, source = "typed") {
@@ -1085,16 +1129,7 @@ function initRecognition() {
       updateTranscript(transcript, true);
     }
     if (finalText) {
-      const cleaned = stripWakeWord(finalText);
-      if (state.wakeArmed) {
-        if (/hey\s+friday|^friday\b/i.test(finalText) && cleaned) {
-          sendCommand(cleaned, "voice");
-        } else if (looksLikeDirectCommand(finalText)) {
-          sendCommand(finalText.trim(), "voice");
-        }
-      } else if (cleaned) {
-        sendCommand(cleaned, "voice");
-      }
+      dispatchVoiceText(finalText);
     }
   };
   recognition.onerror = async () => {
@@ -1135,7 +1170,7 @@ async function toggleVoice() {
       try {
         await startMicAnalysis({ captureAudio: false });
         state.recognition.start();
-        showToast("Voice", "Fast voice recognition activated.");
+        showToast("Voice", state.wakeArmed ? "Wake-word listening activated." : "Direct voice recognition activated.");
         return;
       } catch {
         try {
@@ -1188,8 +1223,8 @@ async function toggleVoice() {
 function toggleWakeArmed() {
   state.wakeArmed = !state.wakeArmed;
   els.listenChip.textContent = state.wakeArmed ? "Wake word armed" : "Direct capture";
-  els.wakeChip.textContent = state.wakeArmed ? "Hey Friday" : "Direct";
-  showToast("Wake word", state.wakeArmed ? "Hey Friday is armed." : "Direct capture enabled.");
+  els.wakeChip.textContent = state.wakeArmed ? "FRIDAY" : "Direct";
+  showToast("Wake word", state.wakeArmed ? "FRIDAY is armed." : "Direct capture enabled.");
   renderCenterSummary();
 }
 
@@ -1316,7 +1351,8 @@ function resizeWaveCanvas() {
     return;
   }
   const rect = canvas.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const mobile = window.matchMedia?.("(max-width: 780px)")?.matches;
+  const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.35 : 2);
   canvas.width = Math.max(1, Math.floor(rect.width * dpr));
   canvas.height = Math.max(1, Math.floor(rect.height * dpr));
   canvas.style.width = "100%";
@@ -1358,7 +1394,7 @@ function drawWaveform() {
   const width = canvas.clientWidth;
   const height = canvas.clientHeight;
   ctx.clearRect(0, 0, width, height);
-  const bars = 64;
+  const bars = window.matchMedia?.("(max-width: 780px)")?.matches ? 40 : 64;
   const barWidth = width / bars;
   const level = state.audioLevel || state.energy;
   for (let i = 0; i < bars; i += 1) {
@@ -1405,7 +1441,7 @@ function drawFallbackParticles() {
 }
 
 function initThree() {
-  if (!window.THREE || !els.threeStage) {
+  if (!window.THREE || !els.threeStage || state.reducedMotion) {
     return;
   }
   const THREE = window.THREE;
@@ -1414,9 +1450,10 @@ function initThree() {
   if (!width || !height) {
     return;
   }
-  state.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  const mobile = window.matchMedia?.("(max-width: 780px)")?.matches;
+  state.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !mobile, powerPreference: "high-performance" });
   state.renderer.setSize(width, height, false);
-  state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  state.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.35 : 2));
   state.threeStage.innerHTML = "";
   state.threeStage.appendChild(state.renderer.domElement);
   state.scene = new THREE.Scene();
@@ -1496,6 +1533,15 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  });
+}
+
 async function bootSequence() {
   const lines = [
     "Powering FRIDAY core...",
@@ -1566,6 +1612,7 @@ async function initWeatherButtonHint() {
 }
 
 async function initApp() {
+  registerServiceWorker();
   bindStaticActions();
   resizeVisuals();
   state.selectedVoice = chooseVoice();

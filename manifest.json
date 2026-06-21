@@ -1,0 +1,20 @@
+{
+  "name": "FRIDAY AI HUD",
+  "short_name": "FRIDAY",
+  "description": "A cinematic Iron Man style AI assistant HUD with voice, wake word, memory, and safe commands.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#02040a",
+  "theme_color": "#02060d",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/friday-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
