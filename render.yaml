@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: friday-ai-hud
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRIDAY_AI_MODEL
+        value: gpt-5
+      - key: FRIDAY_TRANSCRIBE_MODEL
+        value: gpt-4o-transcribe
+      - key: FRIDAY_AUTO_OPEN
+        value: "0"
