@@ -340,3 +340,10 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
     if "hey friday" in lowered or lowered == "friday":
         return "Online."
     return "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode."
+def generate_reply(message: str):
+    print("DEBUG: API KEY:", bool(_API_KEY))
+
+    if not _API_KEY:
+        return "NO API KEY DETECTED"
+
+    return "API KEY FOUND BUT OPENAI NOT CALLED YET"
