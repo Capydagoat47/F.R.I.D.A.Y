@@ -38,6 +38,10 @@ DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 
 _API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 _BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+
+print("OPENAI_API_KEY exists:", bool(_API_KEY))
+print("OPENAI_API_KEY length:", len(_API_KEY))
+
 _RESPONSES_URL = f"{_BASE_URL}/responses"
 _TRANSCRIPTION_URL = f"{_BASE_URL}/audio/transcriptions"
 _LOCK = threading.Lock()
