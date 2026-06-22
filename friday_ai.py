@@ -269,14 +269,9 @@ def generate_reply(
             if text:
                 prompt_lines.append(f"{label}: {text}")
         prompt_lines.append("")
-    prompt_lines.extend(
-        [
-            "User request:",
-            user_text,
-            "",
-            "Reply as FRIDAY. Keep the response concise, cinematic, and action-oriented.",
-        ]
-    )
+
+    prompt_lines.append(f"User: {user_text}")
+    prompt_lines.append("FRIDAY:")
 
     content, error = _responses_call(
         "\n".join(prompt_lines),
