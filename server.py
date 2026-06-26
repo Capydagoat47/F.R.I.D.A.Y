@@ -24,7 +24,7 @@ from xml.etree import ElementTree
 import requests
 
 from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, openai_ready, request_json, resolve_model, transcribe_audio_bytes
-
+print("SERVER IMPORTED FRIDAY_AI SUCCESSFULLY")
 HOST = os.getenv("FRIDAY_HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
 LOCAL_URL = f"http://127.0.0.1:{PORT}"
