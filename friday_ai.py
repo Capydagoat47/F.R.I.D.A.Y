@@ -42,6 +42,8 @@ SUPPORTED_TRANSCRIPTION_MODELS = (
 DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 
 _API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+print("Key starts with:", _API_KEY[:8])
+print("Key length:", len(_API_KEY))
 _BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
 print("OPENAI_API_KEY exists:", bool(_API_KEY))
