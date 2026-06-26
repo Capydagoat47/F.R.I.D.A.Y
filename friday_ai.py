@@ -394,6 +394,6 @@ def generate_reply(
         return reply.strip(), None
 
     return (
-        "I'm sorry, Boss. I couldn't reach my intelligence core.",
-        error,
-    )
+    f"ERROR: {error}",
+    error,
+)
