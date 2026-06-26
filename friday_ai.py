@@ -25,6 +25,11 @@ if load_dotenv is not None:
         load_dotenv(BASE_DIR / ".env", override=False)
     except Exception:
         pass
+print("========== ENV DEBUG ==========")
+print("OPENAI_API_KEY exists:", "OPENAI_API_KEY" in os.environ)
+print("OPENAI_API_KEY value:", repr(os.getenv("OPENAI_API_KEY")))
+print("OPENAI_BASE_URL value:", repr(os.getenv("OPENAI_BASE_URL")))
+print("================================")
 
 SUPPORTED_MODELS = ("gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o")
 DEFAULT_MODEL = "gpt-5"
