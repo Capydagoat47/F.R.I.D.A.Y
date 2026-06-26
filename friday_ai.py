@@ -250,7 +250,7 @@ def transcribe_audio_bytes(
     return "", openai_error or "transcription_unavailable"
 
 
-def generate_reply(
+def get_response(
     user_text: str,
     *,
     history: list[dict[str, str]] | None = None,
@@ -341,16 +341,59 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
         return "Online."
     return "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode."
 def generate_reply(
-    user_text,
+    user_text: str,
+    *,
     history=None,
     context=None,
     model=None,
     temperature=0.35,
     max_completion_tokens=420,
 ):
-    print("DEBUG: API KEY:", bool(_API_KEY))
+    prompt_lines = []
 
-    if not _API_KEY:
-        return "NO API KEY DETECTED", "openai_api_key_missing"
+    if context:
+        prompt_lines.extend([
+            "Context:",
+            context,
+            "",
+        ])
 
-    return "API KEY FOUND BUT OPENAI NOT CALLED YET", None
+    recent = (history or [])[-12:]
+    if recent:
+        prompt_lines.append("Recent conversation:")
+        for item in recent:
+            role = item.get("role", "user")
+            if role not in ("user", "friday"):
+                continue
+
+            label = "You" if role == "user" else "FRIDAY"
+            text = str(item.get("text", "")).strip()
+
+            if text:
+                prompt_lines.append(f"{label}: {text}")
+
+        prompt_lines.append("")
+
+    prompt_lines.extend([
+        f"User: {user_text}",
+        "",
+        "Respond as FRIDAY.",
+    ])
+
+    prompt = "\n".join(prompt_lines)
+
+    reply, error = _responses_call(
+        prompt,
+        instructions=FRIDAY_CORE_PROMPT,
+        model=model,
+        temperature=temperature,
+        max_output_tokens=max_completion_tokens,
+    )
+
+    if reply:
+        return reply.strip(), None
+
+    return (
+        "I'm sorry, Boss. I couldn't reach my intelligence core.",
+        error,
+    )
