@@ -97,7 +97,10 @@ const els = {
   threeStage: id("threeStage"),
 };
 
-const MODEL_ORDER = ["gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o"];
+const MODEL_ORDER = [
+  "gemini-2.5-flash",
+  "gemini-2.5-pro"
+];
 
 function id(name) {
   return document.getElementById(name);
@@ -867,7 +870,7 @@ async function transcribeRecordedVoice() {
     const wavBuffer = encodeWavBuffer(samples, sampleRate);
     const payload = await apiPost("/api/transcribe", {
       audio_base64: arrayBufferToBase64(wavBuffer),
-      model: "gpt-4o-transcribe",
+      model: "gemini-2.5-flash",
     });
     return String(payload.text || "").trim();
   } finally {

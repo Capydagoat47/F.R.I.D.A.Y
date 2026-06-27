@@ -36,14 +36,18 @@ print("GEMINI_API_KEY value:", repr(os.getenv("GEMINI_API_KEY")))
 print("GEMINI_BASE_URL value:", repr(GEMINI_BASE_URL))
 print("================================")
 
-SUPPORTED_MODELS = ("gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o")
-DEFAULT_MODEL = "gpt-5"
-SUPPORTED_TRANSCRIPTION_MODELS = (
-    "gpt-4o-transcribe",
-    "gpt-4o-mini-transcribe",
-    "gpt-4o-transcribe-diarize",
-    "whisper-1",
+SUPPORTED_MODELS = (
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
 )
+
+DEFAULT_MODEL = "gemini-2.5-flash"
+
+# Gemini doesn't use separate transcription models here.
+SUPPORTED_TRANSCRIPTION_MODELS = ()
+
+DEFAULT_TRANSCRIPTION_MODEL = ""
+
 
 DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
@@ -163,35 +167,24 @@ def _responses_call(
     temperature: float = 0.35,
     max_output_tokens: int = 500,
     timeout: int = 60,
-) -> tuple[str | None, str | None]:
-    if not _API_KEY:
+) -> tuple[str | None, str |None]:
+
+    if not GEMINI_API_KEY:
         return None, "gemini_api_key_missing"
 
-    payload: dict[str, Any] = {
-        "model": resolve_model(model),
-        "instructions": instructions,
-        "input": prompt,
-        "temperature": temperature,
-        "max_output_tokens": max_output_tokens,
-    }
-
     try:
-        with _LOCK:
-            response = requests.post(
-                _RESPONSES_URL,
-                headers={
-                    "Authorization": f"Bearer {_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-                timeout=timeout,
-            )
-    except requests.RequestException as exc:
+        response = client.models.generate_content(
+            model=resolve_model(model),
+            contents=f"{instructions}\n\n{prompt}",
+        )
+
+        if response.text:
+            return response.text.strip(), None
+
+        return None, "empty_response"
+
+    except Exception as exc:
         return None, str(exc)
-
-    if not response.ok:
-        return None, f"http_{response.status_code}: {response.text[:300]}"
-
     try:
         data = response.json()
     except ValueError:
@@ -214,12 +207,12 @@ def transcribe_audio_bytes(
     transcription_model = resolve_transcription_model(model)
     gemini_error: str | None = None
 
-    if _API_KEY:
+    if GEMINI_API_KEY:
         try:
             with _LOCK:
                 response = requests.post(
                     _TRANSCRIPTION_URL,
-                    headers={"Authorization": f"Bearer {_API_KEY}"},
+                    headers={"Authorization": f"Bearer {GEMINI_API_KEY}"},
                     files={"file": ("friday.wav", audio_bytes, "audio/wav")},
                     data={"model": transcription_model},
                     timeout=60,
