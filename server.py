@@ -20,10 +20,10 @@ from typing import Any
 from urllib.parse import quote_plus
 from urllib.parse import urlparse
 from xml.etree import ElementTree
-
+from friday_ai import gemini_ready
 import requests
 
-from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, openai_ready, request_json, resolve_model, transcribe_audio_bytes
+from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, gemini_ready, request_json, resolve_model, transcribe_audio_bytes
 print("SERVER IMPORTED FRIDAY_AI SUCCESSFULLY")
 HOST = os.getenv("FRIDAY_HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
@@ -76,7 +76,6 @@ APP_ALIASES = {
     "maps": "https://maps.google.com",
     "drive": "https://drive.google.com",
     "chatgpt": "https://chatgpt.com",
-    "openai": "https://platform.openai.com",
 }
 
 MODEL_LOOKUP = sorted(SUPPORTED_MODELS, key=len, reverse=True)
@@ -98,7 +97,7 @@ def fresh_state() -> dict[str, Any]:
         "owner_title": OWNER_TITLE,
         "wake_word": "hey friday",
         "model": model,
-        "cloud_ready": openai_ready(),
+        "cloud_ready": gemini_ready(),
         "memory_summary": "No stored memory yet.",
         "history": [],
         "events": [],
@@ -180,7 +179,7 @@ def load_state() -> dict[str, Any]:
     state["owner_name"] = OWNER_NAME
     state["owner_title"] = OWNER_TITLE
     state["model"] = resolve_model(str(state.get("model") or DEFAULT_MODEL))
-    state["cloud_ready"] = openai_ready()
+    state["cloud_ready"] = gemini_ready()
     return state
 
 
@@ -264,16 +263,21 @@ def rebuild_memory_summary() -> None:
     STATE["memory_summary"] = build_memory_summary()
     touch_state()
 
-
 def public_state() -> dict[str, Any]:
     payload = deepcopy(STATE)
+
     payload["supported_models"] = list(SUPPORTED_MODELS)
-    payload["cloud_ready"] = openai_ready()
+
+    # Gemini cloud status
+    payload["cloud_ready"] = gemini_ready()
+
     payload["state_url"] = LOCAL_URL
+
     payload["owner_profile"] = {
         "name": STATE.get("owner_name", OWNER_NAME),
         "title": STATE.get("owner_title", OWNER_TITLE),
     }
+
     return payload
 
 
@@ -1329,7 +1333,7 @@ def build_command_plan(text: str, source: str = "typed") -> list[str]:
     if not should_plan_command(cleaned):
         return [cleaned]
 
-    if openai_ready():
+    if gemini_ready():
         prompt = "\n".join(
             [
                 "You are FRIDAY's command planner.",
@@ -1710,7 +1714,7 @@ VOICE_INTENT_KINDS = {
 
 def classify_voice_intent(raw_text: str) -> dict[str, Any] | None:
     text = (raw_text or "").strip()
-    if not text or not openai_ready():
+    if not text or not gemini_ready():
         return None
 
     prompt = "\n".join(
@@ -2020,7 +2024,7 @@ class FridayHandler(BaseHTTPRequestHandler):
                     "status": "online",
                     "name": STATE.get("name", "FRIDAY"),
                     "model": STATE.get("model", DEFAULT_MODEL),
-                    "cloud_ready": openai_ready(),
+                    "cloud_ready": gemini_ready(),
                     "wake_word": STATE.get("wake_word", "hey friday"),
                     "timestamp": now_iso(),
                 }

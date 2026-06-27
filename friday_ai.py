@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from google import genai
 
 try:
     from dotenv import load_dotenv
@@ -25,10 +26,14 @@ if load_dotenv is not None:
         load_dotenv(BASE_DIR / ".env", override=False)
     except Exception:
         pass
+GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "").strip()
+_API_BASE_URL = GEMINI_BASE_URL.rstrip("/") if GEMINI_BASE_URL else "https://generativelanguage.googleapis.com/v1"
+_RESPONSES_URL = f"{_API_BASE_URL}/responses"
+_TRANSCRIPTION_URL = f"{_API_BASE_URL}/audio/transcriptions"
 print("========== ENV DEBUG ==========")
-print("OPENAI_API_KEY exists:", "OPENAI_API_KEY" in os.environ)
-print("OPENAI_API_KEY value:", repr(os.getenv("OPENAI_API_KEY")))
-print("OPENAI_BASE_URL value:", repr(os.getenv("OPENAI_BASE_URL")))
+print("GEMINI_API_KEY exists:", "GEMINI_API_KEY" in os.environ)
+print("GEMINI_API_KEY value:", repr(os.getenv("GEMINI_API_KEY")))
+print("GEMINI_BASE_URL value:", repr(GEMINI_BASE_URL))
 print("================================")
 
 SUPPORTED_MODELS = ("gpt-5", "gpt-5-mini", "gpt-4.1", "gpt-4o")
@@ -39,19 +44,18 @@ SUPPORTED_TRANSCRIPTION_MODELS = (
     "gpt-4o-transcribe-diarize",
     "whisper-1",
 )
+
 DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 
-_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-print("Key starts with:", _API_KEY[:8])
-print("Key length:", len(_API_KEY))
-_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+print("GEMINI_API_KEY exists:", bool(GEMINI_API_KEY))
+print("GEMINI_API_KEY length:", len(GEMINI_API_KEY))
 
-print("OPENAI_API_KEY exists:", bool(_API_KEY))
-print("OPENAI_API_KEY length:", len(_API_KEY))
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-_RESPONSES_URL = f"{_BASE_URL}/responses"
-_TRANSCRIPTION_URL = f"{_BASE_URL}/audio/transcriptions"
 _LOCK = threading.Lock()
+_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+_API_KEY = _GEMINI_API_KEY 
 
 FRIDAY_CORE_PROMPT = (
     "You are FRIDAY, a cinematic desktop intelligence. "
@@ -83,8 +87,8 @@ def resolve_transcription_model(model: str | None = None) -> str:
     return DEFAULT_TRANSCRIPTION_MODEL
 
 
-def openai_ready() -> bool:
-    return bool(_API_KEY)
+def gemini_ready() -> bool:
+    return bool(_GEMINI_API_KEY)
 
 
 def _extract_transcript_text(data: Any) -> str | None:
@@ -161,7 +165,7 @@ def _responses_call(
     timeout: int = 60,
 ) -> tuple[str | None, str | None]:
     if not _API_KEY:
-        return None, "openai_api_key_missing"
+        return None, "gemini_api_key_missing"
 
     payload: dict[str, Any] = {
         "model": resolve_model(model),
@@ -208,7 +212,7 @@ def transcribe_audio_bytes(
         return "", "empty_audio"
 
     transcription_model = resolve_transcription_model(model)
-    openai_error: str | None = None
+    gemini_error: str | None = None
 
     if _API_KEY:
         try:
@@ -229,11 +233,11 @@ def transcribe_audio_bytes(
                 if text is not None:
                     return text, None
                 return "", "missing_transcript"
-            openai_error = f"http_{response.status_code}: {response.text[:300]}"
+            gemini_error = f"http_{response.status_code}: {response.text[:300]}"
         except requests.RequestException as exc:
-            openai_error = str(exc)
+            gemini_error = str(exc)
     else:
-        openai_error = "openai_api_key_missing"
+        gemini_error = "gemini_api_key_missing"
 
     if speech_recognition is not None:
         try:
@@ -245,11 +249,11 @@ def transcribe_audio_bytes(
         except speech_recognition.UnknownValueError:
             return "", None
         except Exception as exc:
-            if openai_error:
-                return "", f"{openai_error}; fallback_failed: {exc}"
+            if gemini_error:
+                return "", f"{gemini_error}; fallback_failed: {exc}"
             return "", f"fallback_failed: {exc}"
 
-    return "", openai_error or "transcription_unavailable"
+    return "", gemini_error or "transcription_unavailable"
 
 
 def get_response(
@@ -330,7 +334,7 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
                     return line.split("Memory summary:", 1)[1].strip() or "No stored memory yet."
         return "No stored memory yet."
     if any(word in lowered for word in ("status", "telemetry", "metrics", "health")):
-        return "Core telemetry is live. Connect `OPENAI_API_KEY` to unlock richer dialogue."
+        return "Core telemetry is live. Connect `GEMINI_API_KEY` to unlock richer dialogue."
     if lowered.startswith(("open ", "launch ", "start ", "search ", "note ", "task ")):
         return "Command received. I can handle the local action."
     if lowered.startswith(("power up", "power down", "security mode", "camera status", "face status")):
@@ -341,7 +345,7 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
         return "Tell me the duration and I will keep time."
     if "hey friday" in lowered or lowered == "friday":
         return "Online."
-    return "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode."
+    return "FRIDAY is ready. Connect `GEMINI_API_KEY` for full conversation mode."
 def generate_reply(
     user_text: str,
     *,

@@ -1,13 +1,13 @@
 # FRIDAY AI HUD
 
-FRIDAY is a cinematic Iron Man style browser assistant with secure server-side OpenAI integration, browser voice control, wake-word activation, session memory, safe command routing, PWA install support, and Capacitor Android wrapper support.
+FRIDAY is a cinematic Iron Man style browser assistant with secure server-side Gemini integration, browser voice control, wake-word activation, session memory, safe command routing, PWA install support, and Capacitor Android wrapper support.
 
 ## Run Locally
 
 1. Create or update `.env`:
 
 ```text
-OPENAI_API_KEY=your_api_key_here
+GEMINI_API_KEY=your_api_key_here
 FRIDAY_AI_MODEL=gpt-5
 PORT=5000
 ```
@@ -58,4 +58,4 @@ npx cap sync android
 npx cap open android
 ```
 
-In Android Studio, build the APK from the generated `android` project. For a local Python backend during development, point the WebView/server strategy at the machine running `server.py`, or package FRIDAY as a PWA-style WebView shell and keep OpenAI calls on a secure backend you control.
+In Android Studio, build the APK from the generated `android` project. For a local Python backend during development, point the WebView/server strategy at the machine running `server.py`, or package FRIDAY as a PWA-style WebView shell and keep GEMINI calls on a secure backend you control.
