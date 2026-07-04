@@ -207,33 +207,8 @@ def transcribe_audio_bytes(
     if not audio_bytes:
         return "", "empty_audio"
 
-    transcription_model = resolve_transcription_model(model)
-    gemini_error: str | None = None
-
-    if GEMINI_API_KEY:
-        try:
-            with _LOCK:
-                response = requests.post(
-                    _TRANSCRIPTION_URL,
-                    headers={"Authorization": f"Bearer {GEMINI_API_KEY}"},
-                    files={"file": ("friday.wav", audio_bytes, "audio/wav")},
-                    data={"model": transcription_model},
-                    timeout=60,
-                )
-            if response.ok:
-                try:
-                    data = response.json()
-                except ValueError:
-                    data = response.text
-                text = _extract_transcript_text(data)
-                if text is not None:
-                    return text, None
-                return "", "missing_transcript"
-            gemini_error = f"http_{response.status_code}: {response.text[:300]}"
-        except requests.RequestException as exc:
-            gemini_error = str(exc)
-    else:
-        gemini_error = "gemini_api_key_missing"
+    # Gemini SDK v1.69.0 does not provide REST /audio/transcriptions endpoint.
+    # Use speech_recognition library directly for reliable transcription.
 
     if speech_recognition is not None:
         try:
@@ -243,13 +218,11 @@ def transcribe_audio_bytes(
             text = recognizer.recognize_google(audio_data)
             return text.strip(), None
         except speech_recognition.UnknownValueError:
-            return "", None
+            return "", "no_speech_detected"
         except Exception as exc:
-            if gemini_error:
-                return "", f"{gemini_error}; fallback_failed: {exc}"
-            return "", f"fallback_failed: {exc}"
+            return "", f"transcription_failed: {exc}"
 
-    return "", gemini_error or "transcription_unavailable"
+    return "", "speech_recognition_unavailable"
 
 
 def get_response(
