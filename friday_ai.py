@@ -167,16 +167,25 @@ def _responses_call(
     temperature: float = 0.35,
     max_output_tokens: int = 500,
     timeout: int = 60,
-) -> tuple[str | None, str |None]:
+) -> tuple[str | None, str | None]:
 
     if not GEMINI_API_KEY:
         return None, "gemini_api_key_missing"
 
     try:
+        chosen_model = resolve_model(model)
+
+        print("=" * 50)
+        print("Using model:", chosen_model)
+        print("API key loaded:", bool(GEMINI_API_KEY))
+        print("=" * 50)
+
         response = client.models.generate_content(
-            model=resolve_model(model),
+            model=chosen_model,
             contents=f"{instructions}\n\n{prompt}",
         )
+
+        print("Response object:", response)
 
         if response.text:
             return response.text.strip(), None
@@ -184,16 +193,9 @@ def _responses_call(
         return None, "empty_response"
 
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         return None, str(exc)
-    try:
-        data = response.json()
-    except ValueError:
-        return None, "invalid_json_response"
-
-    content = extract_output_text(data)
-    if not content:
-        return None, "missing_content"
-    return content, None
 
 
 def transcribe_audio_bytes(
