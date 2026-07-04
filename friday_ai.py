@@ -6,7 +6,7 @@ import os
 import threading
 from pathlib import Path
 from typing import Any
-from protocol import protocol_prompt
+from protocols import protocol_prompt
 
 import requests
 from google import genai

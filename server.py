@@ -1,7 +1,7 @@
 from __future__ import annotations
 from importlib.resources import path
 from xml.sax import handler
-from protocol import (
+from protocols import (
     current_protocol,
     get_protocol,
     get_all_protocols,
