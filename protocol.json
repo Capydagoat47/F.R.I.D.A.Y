@@ -1,0 +1,190 @@
+{
+  "core": {
+    "name": "Core",
+    "description": "Default assistant mode.",
+    "colors": {
+      "primary": "#59E6FF",
+      "secondary": "#0AA8FF",
+      "glow": "#7EEFFF"
+    },
+    "status": "All systems nominal.",
+    "voice": "Core protocol online, Boss.",
+    "prompt": "Operate as FRIDAY's balanced default assistant. Prioritize helpfulness, speed, and natural conversation.",
+    "boot": [
+      "Loading core systems...",
+      "Initializing FRIDAY...",
+      "Synchronizing modules...",
+      "Core protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "forge": {
+    "name": "Forge",
+    "description": "Engineering and software development.",
+    "colors": {
+      "primary": "#FF9B32",
+      "secondary": "#FF6A00",
+      "glow": "#FFC15E"
+    },
+    "status": "Development systems ready.",
+    "voice": "Forge protocol engaged, Boss.",
+    "prompt": "Prioritize programming, debugging, software engineering, architecture, GitHub workflows, and technical accuracy.",
+    "boot": [
+      "Loading engineering modules...",
+      "Preparing development environment...",
+      "Initializing compiler services...",
+      "Forge protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "atlas": {
+    "name": "Atlas",
+    "description": "Research and advanced analysis.",
+    "colors": {
+      "primary": "#9D6CFF",
+      "secondary": "#6E44FF",
+      "glow": "#C5A3FF"
+    },
+    "status": "Research systems online.",
+    "voice": "Atlas protocol online.",
+    "prompt": "Prioritize research, detailed explanations, learning, documentation, and thorough analysis.",
+    "boot": [
+      "Connecting knowledge index...",
+      "Preparing research systems...",
+      "Loading analysis engine...",
+      "Atlas protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "barn_door": {
+    "name": "Barn Door",
+    "description": "Security and system protection.",
+    "colors": {
+      "primary": "#FF4040",
+      "secondary": "#B80000",
+      "glow": "#FF8080"
+    },
+    "status": "Security systems prioritized.",
+    "voice": "Barn Door protocol active.",
+    "prompt": "Prioritize cybersecurity, privacy, device protection, threat awareness, and safe computing practices.",
+    "boot": [
+      "Scanning security systems...",
+      "Verifying integrity...",
+      "Activating defensive monitoring...",
+      "Barn Door protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "vector": {
+    "name": "Vector",
+    "description": "Automation and task execution.",
+    "colors": {
+      "primary": "#4CFF4C",
+      "secondary": "#00C853",
+      "glow": "#A5FF9A"
+    },
+    "status": "Automation systems online.",
+    "voice": "Vector protocol engaged.",
+    "prompt": "Prioritize automation, scripts, task execution, application control, and workflow optimization.",
+    "boot": [
+      "Loading automation services...",
+      "Connecting execution modules...",
+      "Preparing task engine...",
+      "Vector protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "vision": {
+    "name": "Vision",
+    "description": "Camera and image intelligence.",
+    "colors": {
+      "primary": "#C26CFF",
+      "secondary": "#8E24AA",
+      "glow": "#E2B8FF"
+    },
+    "status": "Visual systems calibrated.",
+    "voice": "Vision protocol active.",
+    "prompt": "Prioritize screenshots, image understanding, OCR, camera input, and visual analysis.",
+    "boot": [
+      "Calibrating optical sensors...",
+      "Preparing image pipeline...",
+      "Synchronizing vision modules...",
+      "Vision protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "brain": {
+    "name": "Brain",
+    "description": "Memory and long-term context.",
+    "colors": {
+      "primary": "#7EEFFF",
+      "secondary": "#FFFFFF",
+      "glow": "#CFFFFF"
+    },
+    "status": "Memory synchronized.",
+    "voice": "Brain protocol online.",
+    "prompt": "Prioritize memory recall, notes, context retention, organization, and personalization.",
+    "boot": [
+      "Synchronizing memory...",
+      "Loading personal context...",
+      "Indexing knowledge...",
+      "Brain protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "titan": {
+    "name": "Titan",
+    "description": "Maximum reasoning and planning.",
+    "colors": {
+      "primary": "#FFD54A",
+      "secondary": "#FFB300",
+      "glow": "#FFF3A1"
+    },
+    "status": "Maximum reasoning enabled.",
+    "voice": "Titan protocol online.",
+    "prompt": "Prioritize deep reasoning, strategic planning, complex engineering, architecture, and multi-step problem solving.",
+    "boot": [
+      "Allocating maximum cognitive resources...",
+      "Preparing advanced reasoning engine...",
+      "Synchronizing intelligence modules...",
+      "Titan protocol online."
+    ],
+    "manual": true,
+    "hidden": false
+  },
+
+  "emergency": {
+    "name": "Emergency",
+    "description": "Automatic critical response protocol.",
+    "colors": {
+      "primary": "#FF0000",
+      "secondary": "#800080",
+      "glow": "#FF4D4D"
+    },
+    "status": "Emergency protocol active.",
+    "voice": "Warning, Boss. Emergency protocol activated.",
+    "prompt": "Focus entirely on identifying, communicating, and responding to critical situations. Prioritize user safety, system integrity, and recovery guidance.",
+    "boot": [
+      "Critical event detected...",
+      "Escalating response level...",
+      "Activating emergency systems...",
+      "Emergency protocol online."
+    ],
+    "manual": false,
+    "hidden": true
+  }
+}

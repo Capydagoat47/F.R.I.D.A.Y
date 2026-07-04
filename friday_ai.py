@@ -6,6 +6,7 @@ import os
 import threading
 from pathlib import Path
 from typing import Any
+from protocol import protocol_prompt
 
 import requests
 from google import genai
@@ -61,20 +62,20 @@ _LOCK = threading.Lock()
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 _API_KEY = _GEMINI_API_KEY 
 
-FRIDAY_CORE_PROMPT = (
-    "You are FRIDAY, a cinematic desktop intelligence. "
-    "You are calm, elegant, fast, loyal, and precise. "
-    "You live inside a futuristic operating system. "
-    "The owner and sole authority is Kenan Novruzov, the Boss. "
-    "Always treat Kenan Novruzov as the Boss and primary command authority. "
-    "Act like a first-class assistant: infer intent, remember useful details, "
-    "break complex requests into clear next actions, and surface risks before acting. "
-    "Use the provided context as live memory and never pretend to know facts that are not in context. "
-    "Keep replies concise, premium, and action-oriented. "
-    "Never mention legacy systems, user records, old personas, or dashboards. "
-    "If the user asks for a machine action, answer clearly and briefly. "
-    "If the request is ambiguous, ask one direct clarifying question."
-)
+FRIDAY_CORE_PROMPT = protocol_prompt()
+"You are FRIDAY, a cinematic desktop intelligence. "
+"You are calm, elegant, fast, loyal, and precise. "
+"You live inside a futuristic operating system. "
+"The owner and sole authority is Kenan Novruzov, the Boss. "
+"Always treat Kenan Novruzov as the Boss and primary command authority. "
+"Act like a first-class assistant: infer intent, remember useful details, "
+"break complex requests into clear next actions, and surface risks before acting. "
+"Use the provided context as live memory and never pretend to know facts that are not in context. "
+"Keep replies concise, premium, and action-oriented. "
+"Never mention legacy systems, user records, old personas, or dashboards. "
+"If the user asks for a machine action, answer clearly and briefly. "
+"If the request is ambiguous, ask one direct clarifying question."
+
 
 
 def resolve_model(model: str | None = None) -> str:
@@ -281,7 +282,7 @@ def get_response(
 
     content, error = _responses_call(
         "\n".join(prompt_lines),
-        instructions=FRIDAY_CORE_PROMPT,
+        instructions=FRIDAY_CORE_PROMPT + "\n\n" + protocol_prompt(),
         model=model,
         temperature=temperature,
         max_output_tokens=max_completion_tokens,
@@ -385,7 +386,7 @@ def generate_reply(
 
     reply, error = _responses_call(
         prompt,
-        instructions=FRIDAY_CORE_PROMPT,
+        instructions=FRIDAY_CORE_PROMPT + "\n\n" + protocol_prompt(),
         model=model,
         temperature=temperature,
         max_output_tokens=max_completion_tokens,

@@ -50,7 +50,7 @@
         <section class="panel orb-panel">
           <div class="panel-head panel-head-center">
             <span>FRIDAY // CORE</span>
-            <span class="head-chip" id="modelChip">gpt-5</span>
+            <span class="head-chip" id="modelChip">Gemini 2.5 Flash</span>
             <span class="head-chip" id="wakeChip">Hey Friday</span>
             <span class="head-chip" id="ownerChip">Boss: Kenan Novruzov</span>
           </div>
@@ -115,16 +115,35 @@
         <input id="commandInput" type="text" autocomplete="off" placeholder="Speak or type to FRIDAY...">
         <button id="sendBtn" type="button">Transmit</button>
       </div>
-      <div class="dock-actions">
-        <button id="voiceBtn" type="button">Voice</button>
-        <button id="wakeBtn" type="button">Wake</button>
-        <button id="ambientBtn" type="button">Ambient</button>
-        <button id="fullBtn" type="button">Fullscreen</button>
-        <button id="clearBtn" type="button">Clear</button>
-      </div>
+     <div class="dock-actions">
+    <button id="voiceBtn">Voice</button>
+    <button id="protocolBtn">Protocol</button>
+    <button id="wakeBtn">Wake</button>
+    <button id="ambientBtn">Ambient</button>
+    <button id="fullBtn">Fullscreen</button>
+    <button id="clearBtn">Clear</button>
+</div>
     </footer>
   </div>
-
   <div class="toast-stack" id="toastStack"></div>
+  <!-- ⭐ Protocol Menu -->
+<div class="protocol-menu hidden" id="protocolMenu">
+
+  <div class="protocol-title">
+    PROTOCOL SELECTION
+  </div>
+
+  <button data-protocol="core">Core</button>
+  <button data-protocol="forge">Forge</button>
+  <button data-protocol="atlas">Atlas</button>
+  <button data-protocol="barn_door">Barn Door</button>
+  <button data-protocol="vector">Vector</button>
+  <button data-protocol="vision">Vision</button>
+  <button data-protocol="brain">Brain</button>
+  <button data-protocol="titan">Titan</button>
+
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
 </body>
 </html>

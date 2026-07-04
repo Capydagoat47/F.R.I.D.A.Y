@@ -95,6 +95,8 @@ const els = {
   toastStack: id("toastStack"),
   waveCanvas: id("waveCanvas"),
   threeStage: id("threeStage"),
+  protocolBtn: document.getElementById("protocolBtn"),
+protocolMenu: document.getElementById("protocolMenu"),
 };
 
 const MODEL_ORDER = [
@@ -1644,4 +1646,9 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error(error);
     showToast("FRIDAY", "Startup failed.");
   });
+});
+els.protocolBtn.addEventListener("click", () => {
+
+    els.protocolMenu.classList.toggle("hidden");
+
 });

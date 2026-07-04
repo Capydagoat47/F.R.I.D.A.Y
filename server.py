@@ -1,5 +1,12 @@
 from __future__ import annotations
-
+from importlib.resources import path
+from xml.sax import handler
+from protocol import (
+    current_protocol,
+    get_protocol,
+    get_all_protocols,
+    set_protocol
+)
 import base64
 import ast
 import json
@@ -2035,11 +2042,20 @@ class FridayHandler(BaseHTTPRequestHandler):
             return self._send_json(get_system_metrics(force=False))
         if self.path == "/api/models":
             return self._send_json({"supported_models": list(SUPPORTED_MODELS), "preferred": STATE.get("model", DEFAULT_MODEL)})
+        if self.path == "/api/protocol":
+            current = current_protocol()
+            response = {
+                "current": current,
+                "protocol": get_protocol(current),
+                "protocols": get_all_protocols()
+            }
+            return self._send_json(response)
         if self.path == "/favicon.ico":
             return self._send_text("", status=204)
         self.send_error(404)
 
-    def do_POST(self) -> None:
+
+def do_POST(self) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
         raw_body = self.rfile.read(content_length) if content_length else b""
 
@@ -2095,6 +2111,32 @@ class FridayHandler(BaseHTTPRequestHandler):
                 return self._send_json({"ok": False, "error": str(exc)}, status=400)
             reply = complete_task(str(payload.get("target", "")))
             return self._send_json({"ok": True, "reply": reply, "state": public_state()})
+        if self.path == "/api/protocol":
+            try:
+                payload = parse_json_body(raw_body)
+            except Exception as exc:
+                return self._send_json({"ok": False, "error": str(exc)}, status=400)
+
+            name = str(payload.get("protocol", "")).strip().lower()
+
+            if not set_protocol(name):
+                return self._send_json(
+                    {
+                        "ok": False,
+                        "error": "invalid_protocol"
+                    },
+                    status=400,
+                )
+
+            current = current_protocol()
+
+            return self._send_json(
+                {
+                    "ok": True,
+                    "current": current,
+                    "protocol": get_protocol(current),
+                }
+            )
 
         if self.path == "/api/model":
             try:

@@ -1122,3 +1122,93 @@ body.ready .shell {
     display: none;
   }
 }
+
+.protocol-menu {
+  position: fixed;
+  bottom: 95px;
+  right: 24px;
+
+  width: 270px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  padding: 16px;
+
+  border-radius: 22px;
+
+  background: rgba(8, 14, 24, 0.82);
+  backdrop-filter: blur(18px);
+
+  border: 1px solid rgba(89, 230, 255, 0.22);
+
+  box-shadow:
+      0 0 35px rgba(89,230,255,.12),
+      inset 0 1px 0 rgba(255,255,255,.05);
+
+  z-index: 9999;
+
+  transition:
+      opacity .25s,
+      transform .25s;
+}
+
+.protocol-menu.hidden {
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+
+.protocol-title {
+  color: #59e6ff;
+
+  text-align: center;
+
+  letter-spacing: .18em;
+
+  font-size: .72rem;
+
+  margin-bottom: 8px;
+}
+
+.protocol-menu button {
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+
+  background: rgba(255,255,255,.03);
+
+  border: 1px solid rgba(89,230,255,.16);
+
+  color: white;
+
+  padding: 13px 16px;
+
+  border-radius: 14px;
+
+  cursor: pointer;
+
+  font-size: .95rem;
+
+  transition:
+      transform .22s,
+      background .22s,
+      border-color .22s,
+      box-shadow .22s;
+}
+
+.protocol-menu button:hover {
+
+  transform: translateX(6px);
+
+  border-color: #59e6ff;
+
+  background: rgba(89,230,255,.12);
+
+  box-shadow: 0 0 18px rgba(89,230,255,.22);
+
+}

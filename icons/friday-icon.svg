@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FRIDAY icon">
-  <rect width="512" height="512" rx="112" fill="#02060d"/>
-  <circle cx="256" cy="256" r="178" fill="none" stroke="#144f8f" stroke-width="10"/>
-  <circle cx="256" cy="256" r="132" fill="none" stroke="#59e6ff" stroke-width="6" stroke-dasharray="26 18"/>
-  <circle cx="256" cy="256" r="76" fill="#071b32" stroke="#8ef7ff" stroke-width="8"/>
-  <circle cx="230" cy="226" r="26" fill="#e9fbff"/>
-  <path d="M256 105v58M256 349v58M105 256h58M349 256h58" stroke="#378dff" stroke-width="12" stroke-linecap="round"/>
-  <text x="256" y="468" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="48" font-weight="700" fill="#edf7ff">FRIDAY</text>
-</svg>
