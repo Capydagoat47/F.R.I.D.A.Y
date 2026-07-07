@@ -218,7 +218,6 @@ def _responses_call(
 
         # Rotate to the next API key if quota is exceeded.
         if "quota" in error.lower() or "429" in error:
-            global CURRENT_KEY_INDEX
 
             if GEMINI_API_KEYS:
                 CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(GEMINI_API_KEYS)
