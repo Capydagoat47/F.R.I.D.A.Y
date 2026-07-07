@@ -2054,8 +2054,7 @@ class FridayHandler(BaseHTTPRequestHandler):
             return self._send_text("", status=204)
         self.send_error(404)
 
-
-def do_POST(self) -> None:
+    def do_POST(self) -> None:
         content_length = int(self.headers.get("Content-Length", "0"))
         raw_body = self.rfile.read(content_length) if content_length else b""
 
