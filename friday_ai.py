@@ -11,6 +11,9 @@ from protocols import protocol_prompt
 import requests
 from google import genai
 
+# Expose genai as the client variable used below. Configuration (API key)
+# is applied dynamically before requests when needed.
+
 try:
     from dotenv import load_dotenv
 except Exception:
@@ -50,17 +53,28 @@ SUPPORTED_TRANSCRIPTION_MODELS = ()
 DEFAULT_TRANSCRIPTION_MODEL = ""
 
 
-DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-transcribe"
+# ===== GEMINI API KEY POOL =====
+
+GEMINI_API_KEYS = []
+
+for i in range(1, 11):
+    key = os.getenv(f"GEMINI_API_KEY_{i}", "").strip()
+    if key:
+        GEMINI_API_KEYS.append(key)
+
+CURRENT_KEY_INDEX = 0
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+if not GEMINI_API_KEYS and GEMINI_API_KEY:
+    GEMINI_API_KEYS.append(GEMINI_API_KEY)
 
-print("GEMINI_API_KEY exists:", bool(GEMINI_API_KEY))
-print("GEMINI_API_KEY length:", len(GEMINI_API_KEY))
+print("=" * 50)
+print("Gemini API Keys Loaded:", len(GEMINI_API_KEYS))
+print("Current Key:", CURRENT_KEY_INDEX + 1)
+print("=" * 50)
 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
+if not GEMINI_API_KEYS:
+    raise RuntimeError("No Gemini API keys found.")
 _LOCK = threading.Lock()
-_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-_API_KEY = _GEMINI_API_KEY 
 
 FRIDAY_CORE_PROMPT = protocol_prompt()
 "You are FRIDAY, a cinematic desktop intelligence. "
@@ -93,7 +107,7 @@ def resolve_transcription_model(model: str | None = None) -> str:
 
 
 def gemini_ready() -> bool:
-    return bool(_GEMINI_API_KEY)
+    return len(GEMINI_API_KEYS) > 0
 
 
 def _extract_transcript_text(data: Any) -> str | None:
@@ -170,7 +184,7 @@ def _responses_call(
     timeout: int = 60,
 ) -> tuple[str | None, str | None]:
 
-    if not GEMINI_API_KEY:
+    if not GEMINI_API_KEYS:
         return None, "gemini_api_key_missing"
 
     try:
@@ -178,9 +192,12 @@ def _responses_call(
 
         print("=" * 50)
         print("Using model:", chosen_model)
-        print("API key loaded:", bool(GEMINI_API_KEY))
+        print("API key loaded:", bool(GEMINI_API_KEYS))
         print("=" * 50)
 
+        client = genai.Client(
+            api_key=GEMINI_API_KEYS[CURRENT_KEY_INDEX]
+        )
         response = client.models.generate_content(
             model=chosen_model,
             contents=f"{instructions}\n\n{prompt}",
@@ -196,8 +213,30 @@ def _responses_call(
     except Exception as exc:
         import traceback
         traceback.print_exc()
-        return None, str(exc)
 
+        error = str(exc)
+
+        # Rotate to the next API key if quota is exceeded.
+        if "quota" in error.lower() or "429" in error:
+            global CURRENT_KEY_INDEX
+
+            if GEMINI_API_KEYS:
+                CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(GEMINI_API_KEYS)
+
+                print("=" * 50)
+                print(f"Switching to API Key #{CURRENT_KEY_INDEX + 1}")
+                print("=" * 50)
+
+                return _responses_call(
+                    prompt,
+                    instructions=instructions,
+                    model=model,
+                    temperature=temperature,
+                    max_output_tokens=max_output_tokens,
+                    timeout=timeout,
+                )
+
+    return None, error
 
 def transcribe_audio_bytes(
     audio_bytes: bytes,
