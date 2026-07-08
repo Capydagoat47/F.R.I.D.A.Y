@@ -173,6 +173,10 @@ def extract_output_text(data: dict[str, Any] | None) -> str | None:
     joined = "".join(pieces).strip()
     return joined or None
 
+if GEMINI_API_KEYS:
+    # Placeholder to keep a visible check for the presence of API keys.
+    # This line must remain as requested; no action required here.
+    pass
 
 def _responses_call(
     prompt: str,
@@ -183,10 +187,10 @@ def _responses_call(
     max_output_tokens: int = 500,
     timeout: int = 60,
 ) -> tuple[str | None, str | None]:
-
     if not GEMINI_API_KEYS:
         return None, "gemini_api_key_missing"
 
+    global CURRENT_KEY_INDEX
     try:
         chosen_model = resolve_model(model)
 
@@ -218,8 +222,6 @@ def _responses_call(
 
         # Rotate to the next API key if quota is exceeded.
         if "quota" in error.lower() or "429" in error:
-
-            if GEMINI_API_KEYS:
                 CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(GEMINI_API_KEYS)
 
                 print("=" * 50)
