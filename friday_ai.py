@@ -187,10 +187,12 @@ def _responses_call(
     max_output_tokens: int = 500,
     timeout: int = 60,
 ) -> tuple[str | None, str | None]:
-    if not GEMINI_API_KEYS:
-        return None, "gemini_api_key_missing"
 
     global CURRENT_KEY_INDEX
+    
+    if not GEMINI_API_KEYS:
+        return None, "gemini_api_key_missing"
+    
     try:
         chosen_model = resolve_model(model)
 
