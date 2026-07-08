@@ -186,60 +186,54 @@ def _responses_call(
     temperature: float = 0.35,
     max_output_tokens: int = 500,
     timeout: int = 60,
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str |None]:
 
     global CURRENT_KEY_INDEX
-    
+
     if not GEMINI_API_KEYS:
         return None, "gemini_api_key_missing"
-    
-    try:
-        chosen_model = resolve_model(model)
 
-        print("=" * 50)
-        print("Using model:", chosen_model)
-        print("API key loaded:", bool(GEMINI_API_KEYS))
-        print("=" * 50)
+    chosen_model = resolve_model(model)
 
-        client = genai.Client(
-            api_key=GEMINI_API_KEYS[CURRENT_KEY_INDEX]
-        )
-        response = client.models.generate_content(
-            model=chosen_model,
-            contents=f"{instructions}\n\n{prompt}",
-        )
+    for _ in range(len(GEMINI_API_KEYS)):
 
-        print("Response object:", response)
+        try:
+            print("=" * 50)
+            print(f"Using API Key #{CURRENT_KEY_INDEX + 1}")
+            print("Using model:", chosen_model)
+            print("=" * 50)
 
-        if response.text:
-            return response.text.strip(), None
+            client = genai.Client(
+                api_key=GEMINI_API_KEYS[CURRENT_KEY_INDEX]
+            )
 
-        return None, "empty_response"
+            response = client.models.generate_content(
+                model=chosen_model,
+                contents=f"{instructions}\n\n{prompt}",
+            )
 
-    except Exception as exc:
-        import traceback
-        traceback.print_exc()
+            if response.text:
+                return response.text.strip(), None
 
-        error = str(exc)
+            return None, "empty_response"
 
-        # Rotate to the next API key if quota is exceeded.
-        if "quota" in error.lower() or "429" in error:
+        except Exception as exc:
+            error = str(exc)
+
+            if (
+                "429" in error
+                or "RESOURCE_EXHAUSTED" in error
+                or "quota" in error.lower()
+            ):
+                print(f"API Key #{CURRENT_KEY_INDEX + 1} exhausted.")
+
                 CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(GEMINI_API_KEYS)
 
-                print("=" * 50)
-                print(f"Switching to API Key #{CURRENT_KEY_INDEX + 1}")
-                print("=" * 50)
+                continue
 
-                return _responses_call(
-                    prompt,
-                    instructions=instructions,
-                    model=model,
-                    temperature=temperature,
-                    max_output_tokens=max_output_tokens,
-                    timeout=timeout,
-                )
+            return None, error
 
-    return None, error
+    return None, "All Gemini API keys exhausted."
 
 def transcribe_audio_bytes(
     audio_bytes: bytes,
