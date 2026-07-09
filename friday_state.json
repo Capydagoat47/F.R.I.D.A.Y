@@ -5,44 +5,8 @@
   "wake_word": "hey friday",
   "model": "gemini-2.5-flash",
   "cloud_ready": false,
-  "memory_summary": "Owner: Kenan Novruzov (Boss) | Notes: cinematic hud layout | Recent commands: Use model gpt-4o, system status, open calculator | Recent FRIDAY replies: For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target.",
+  "memory_summary": "Owner: Kenan Novruzov (Boss) | Notes: cinematic hud layout | Recent commands: hello Friday, Friday?, How are you | Recent FRIDAY replies: ERROR: gemini_api_key_missing",
   "history": [
-    {
-      "id": "msg_1780232636712_19700",
-      "role": "user",
-      "text": "Security mode shield",
-      "ts": "2026-05-31T17:03:56"
-    },
-    {
-      "id": "msg_1780232636811_19700",
-      "role": "friday",
-      "text": "Security shield engaged.",
-      "ts": "2026-05-31T17:03:56"
-    },
-    {
-      "id": "msg_1780240260450_3612",
-      "role": "user",
-      "text": "hey Friday",
-      "ts": "2026-05-31T19:11:00"
-    },
-    {
-      "id": "msg_1780240260452_3612",
-      "role": "friday",
-      "text": "Online.",
-      "ts": "2026-05-31T19:11:00"
-    },
-    {
-      "id": "msg_1780240276126_3612",
-      "role": "user",
-      "text": "you listening",
-      "ts": "2026-05-31T19:11:16"
-    },
-    {
-      "id": "msg_1780240294000_3612",
-      "role": "friday",
-      "text": "FRIDAY is ready. Connect `OPENAI_API_KEY` for full conversation mode.",
-      "ts": "2026-05-31T19:11:34"
-    },
     {
       "id": "msg_1780240295591_3612",
       "role": "user",
@@ -246,27 +210,45 @@
       "role": "friday",
       "text": "For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target.",
       "ts": "2026-06-22T00:10:06"
+    },
+    {
+      "id": "msg_1783591784809_16016",
+      "role": "user",
+      "text": "hello Friday",
+      "ts": "2026-07-09T14:09:44"
+    },
+    {
+      "id": "msg_1783591788433_16016",
+      "role": "friday",
+      "text": "ERROR: gemini_api_key_missing",
+      "ts": "2026-07-09T14:09:48"
+    },
+    {
+      "id": "msg_1783591791537_16016",
+      "role": "user",
+      "text": "Friday?",
+      "ts": "2026-07-09T14:09:51"
+    },
+    {
+      "id": "msg_1783591791538_16016",
+      "role": "friday",
+      "text": "Online.",
+      "ts": "2026-07-09T14:09:51"
+    },
+    {
+      "id": "msg_1783591795276_16016",
+      "role": "user",
+      "text": "How are you",
+      "ts": "2026-07-09T14:09:55"
+    },
+    {
+      "id": "msg_1783591795883_16016",
+      "role": "friday",
+      "text": "ERROR: gemini_api_key_missing",
+      "ts": "2026-07-09T14:09:55"
     }
   ],
   "events": [
-    {
-      "id": "evt_1780240300237_3612",
-      "kind": "security",
-      "text": "Security mode set to shield.",
-      "ts": "2026-05-31T19:11:40"
-    },
-    {
-      "id": "evt_1780240300252_3612",
-      "kind": "security",
-      "text": "Security shield engaged.",
-      "ts": "2026-05-31T19:11:40"
-    },
-    {
-      "id": "evt_1780240300401_3612",
-      "kind": "security",
-      "text": "Security mode set to shield.",
-      "ts": "2026-05-31T19:11:40"
-    },
     {
       "id": "evt_1780240300422_3612",
       "kind": "security",
@@ -368,6 +350,24 @@
       "kind": "open",
       "text": "For safety, I only open approved web links. Try: open YouTube, open GitHub, or search web for your target.",
       "ts": "2026-06-22T00:10:06"
+    },
+    {
+      "id": "evt_1783591788433_16016",
+      "kind": "conversation",
+      "text": "ERROR: gemini_api_key_missing",
+      "ts": "2026-07-09T14:09:48"
+    },
+    {
+      "id": "evt_1783591791538_16016",
+      "kind": "greeting",
+      "text": "Online.",
+      "ts": "2026-07-09T14:09:51"
+    },
+    {
+      "id": "evt_1783591795883_16016",
+      "kind": "conversation",
+      "text": "ERROR: gemini_api_key_missing",
+      "ts": "2026-07-09T14:09:55"
     }
   ],
   "notes": [
@@ -380,24 +380,6 @@
   "tasks": [],
   "facts": [],
   "command_memory": [
-    {
-      "id": "cmd_1780232636712_19700",
-      "text": "Security mode shield",
-      "source": "typed",
-      "ts": "2026-05-31T17:03:56"
-    },
-    {
-      "id": "cmd_1780240260450_3612",
-      "text": "hey Friday",
-      "source": "typed",
-      "ts": "2026-05-31T19:11:00"
-    },
-    {
-      "id": "cmd_1780240276126_3612",
-      "text": "you listening",
-      "source": "voice",
-      "ts": "2026-05-31T19:11:16"
-    },
     {
       "id": "cmd_1780240295591_3612",
       "text": "Security mode shield",
@@ -499,6 +481,24 @@
       "text": "open calculator",
       "source": "typed",
       "ts": "2026-06-22T00:10:06"
+    },
+    {
+      "id": "cmd_1783591784810_16016",
+      "text": "hello Friday",
+      "source": "typed",
+      "ts": "2026-07-09T14:09:44"
+    },
+    {
+      "id": "cmd_1783591791537_16016",
+      "text": "Friday?",
+      "source": "typed",
+      "ts": "2026-07-09T14:09:51"
+    },
+    {
+      "id": "cmd_1783591795276_16016",
+      "text": "How are you",
+      "source": "typed",
+      "ts": "2026-07-09T14:09:55"
     }
   ],
   "contacts": [],
@@ -531,5 +531,5 @@
     }
   ],
   "created_at": "2026-05-31T14:48:47",
-  "updated_at": "2026-07-09T14:00:21"
+  "updated_at": "2026-07-09T14:09:55"
 }

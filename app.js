@@ -978,47 +978,81 @@ async function finalizeVoiceCapture(reason = "silence") {
   }
 }
 
-function detectVoiceMood(text) {
-  const normalized = String(text || "").toLowerCase();
-  if (/(sorry|apolog|worry|concern|danger|problem|error|critical|unable|can't|cannot|fail|issue)/.test(normalized)) {
-    return { rate: 0.84, pitch: 0.74, volume: 0.96, tone: "concerned" };
+function detectVoiceMood(text, contextText = "") {
+  const combined = `${String(text || "")} ${String(contextText || "")}`.toLowerCase();
+  if (/(worried|worry|concern|problem|issue|panic|danger|help me|can't|cannot|fail|error|critical|scared|upset|sad|bad|stress)/.test(combined)) {
+    return { rate: 0.76, pitch: 0.64, volume: 0.96, tone: "concerned" };
   }
-  if (/(great|awesome|excellent|happy|glad|joy|delight|perfect|success|done|ready)/.test(normalized)) {
-    return { rate: 1.03, pitch: 1.02, volume: 0.98, tone: "joyful" };
+  if (/(great|awesome|excellent|happy|glad|joy|delight|perfect|success|done|ready|love|amazing|fantastic|good news)/.test(combined)) {
+    return { rate: 1.16, pitch: 1.12, volume: 0.99, tone: "joyful" };
   }
-  if (/(question|what|who|when|where|why|how|curious)/.test(normalized)) {
-    return { rate: 0.94, pitch: 0.9, volume: 0.95, tone: "curious" };
+  if (/(what|who|when|where|why|how|tell me|can you|could you|curious)/.test(combined)) {
+    return { rate: 0.92, pitch: 0.92, volume: 0.95, tone: "curious" };
   }
-  if (/(warning|alert|attention|careful|cautious)/.test(normalized)) {
-    return { rate: 0.88, pitch: 0.8, volume: 0.97, tone: "alert" };
+  if (/(warning|alert|attention|careful|cautious|urgent)/.test(combined)) {
+    return { rate: 0.84, pitch: 0.78, volume: 0.97, tone: "alert" };
   }
-  return { rate: 0.95, pitch: 0.84, volume: 1, tone: "neutral" };
+  return { rate: 0.95, pitch: 0.86, volume: 1, tone: "neutral" };
 }
 
-function finalizeSpeech(text) {
+function selectVoiceForMood(moodTone) {
+  const voices = window.speechSynthesis?.getVoices?.() || [];
+  if (!voices.length) {
+    return null;
+  }
+  const patterns = {
+    concerned: [/(samantha|sonia|ava|hazel|jenny|google.*female|microsoft.*jenny|microsoft.*sara)/i],
+    joyful: [/(samantha|aria|ava|sonia|zira|hazel|google.*female|microsoft.*aria|microsoft.*jenny)/i],
+    curious: [/(samantha|aria|sonia|zira|jenny|google.*female|microsoft.*sara)/i],
+    alert: [/(zira|hazel|aria|samantha|jenny|google.*female|microsoft.*david)/i],
+  }[moodTone] || [/(samantha|aria|sonia|zira|ava|hazel|jenny)/i];
+
+  return voices.find((voice) => patterns.some((pattern) => pattern.test(voice.name)))
+    || voices.find((voice) => /en-us|en-gb/i.test(voice.lang))
+    || voices[0];
+}
+
+function prepareSpeechText(text, mood) {
+  if (!text) {
+    return text;
+  }
+  if (mood.tone === "concerned") {
+    return `${String(text).trim()} ...`;
+  }
+  if (mood.tone === "joyful") {
+    return `${String(text).trim()}!`;
+  }
+  if (mood.tone === "alert") {
+    return `${String(text).trim()}.`;
+  }
+  return String(text).trim();
+}
+
+function finalizeSpeech(text, options = {}) {
   if (!("speechSynthesis" in window) || !text) {
     return false;
   }
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  const mood = detectVoiceMood(text);
+  const mood = options.mood || detectVoiceMood(text, options.contextText || "");
+  const preparedText = prepareSpeechText(text, mood);
+  const utterance = new SpeechSynthesisUtterance(preparedText);
   utterance.rate = mood.rate;
   utterance.pitch = mood.pitch;
   utterance.volume = mood.volume;
   utterance.lang = "en-US";
-  const voice = state.selectedVoice || chooseVoice();
-  if (voice) {
-    utterance.voice = voice;
-    state.selectedVoice = voice;
+  const selectedVoice = options.voice || state.selectedVoice || selectVoiceForMood(mood.tone) || chooseVoice();
+  if (selectedVoice) {
+    utterance.voice = selectedVoice;
+    state.selectedVoice = selectedVoice;
   }
   utterance.onstart = () => {
     state.speaking = true;
     updateVoiceState("Speaking", "speaking");
     const toneMap = {
-      concerned: [660, 0.08, "sawtooth", 0.03],
-      joyful: [980, 0.06, "triangle", 0.03],
-      curious: [760, 0.06, "sine", 0.028],
-      alert: [720, 0.07, "square", 0.032],
+      concerned: [660, 0.1, "sawtooth", 0.035],
+      joyful: [980, 0.07, "triangle", 0.035],
+      curious: [760, 0.07, "sine", 0.03],
+      alert: [720, 0.08, "square", 0.038],
     };
     const tone = toneMap[mood.tone] || [880, 0.06, "sine", 0.035];
     playTone(tone[0], tone[1], tone[2], tone[3]);
@@ -1116,7 +1150,7 @@ async function sendCommand(textOverride = null, source = "typed") {
     if (payload.kind === "model") {
       showToast("Model", reply);
     }
-    const spoken = finalizeSpeech(reply);
+    const spoken = finalizeSpeech(reply, { contextText: input });
     if (!spoken) {
       state.speaking = false;
       updateVoiceState(state.listening ? "Listening" : "Voice idle", state.listening ? "listening" : "idle");
