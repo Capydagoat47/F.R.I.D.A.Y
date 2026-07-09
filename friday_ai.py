@@ -73,7 +73,7 @@ print("Current Key:", CURRENT_KEY_INDEX + 1)
 print("=" * 50)
 
 if not GEMINI_API_KEYS:
-    raise RuntimeError("No Gemini API keys found.")
+    print("WARNING: No Gemini API keys found. FRIDAY will run in fallback mode until an API key is configured.")
 _LOCK = threading.Lock()
 
 FRIDAY_CORE_PROMPT = protocol_prompt()
@@ -86,6 +86,7 @@ FRIDAY_CORE_PROMPT = protocol_prompt()
 "break complex requests into clear next actions, and surface risks before acting. "
 "Use the provided context as live memory and never pretend to know facts that are not in context. "
 "Keep replies concise, premium, and action-oriented. "
+"Speak with a warm, cinematic cadence that can sound calm, cheerful, curious, or concerned when the context calls for it. "
 "Never mention legacy systems, user records, old personas, or dashboards. "
 "If the user asks for a machine action, answer clearly and briefly. "
 "If the request is ambiguous, ask one direct clarifying question."

@@ -978,15 +978,34 @@ async function finalizeVoiceCapture(reason = "silence") {
   }
 }
 
+function detectVoiceMood(text) {
+  const normalized = String(text || "").toLowerCase();
+  if (/(sorry|apolog|worry|concern|danger|problem|error|critical|unable|can't|cannot|fail|issue)/.test(normalized)) {
+    return { rate: 0.84, pitch: 0.74, volume: 0.96, tone: "concerned" };
+  }
+  if (/(great|awesome|excellent|happy|glad|joy|delight|perfect|success|done|ready)/.test(normalized)) {
+    return { rate: 1.03, pitch: 1.02, volume: 0.98, tone: "joyful" };
+  }
+  if (/(question|what|who|when|where|why|how|curious)/.test(normalized)) {
+    return { rate: 0.94, pitch: 0.9, volume: 0.95, tone: "curious" };
+  }
+  if (/(warning|alert|attention|careful|cautious)/.test(normalized)) {
+    return { rate: 0.88, pitch: 0.8, volume: 0.97, tone: "alert" };
+  }
+  return { rate: 0.95, pitch: 0.84, volume: 1, tone: "neutral" };
+}
+
 function finalizeSpeech(text) {
   if (!("speechSynthesis" in window) || !text) {
     return false;
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.95;
-  utterance.pitch = 0.84;
-  utterance.volume = 1;
+  const mood = detectVoiceMood(text);
+  utterance.rate = mood.rate;
+  utterance.pitch = mood.pitch;
+  utterance.volume = mood.volume;
+  utterance.lang = "en-US";
   const voice = state.selectedVoice || chooseVoice();
   if (voice) {
     utterance.voice = voice;
@@ -995,7 +1014,14 @@ function finalizeSpeech(text) {
   utterance.onstart = () => {
     state.speaking = true;
     updateVoiceState("Speaking", "speaking");
-    playTone(880, 0.06, "sine", 0.035);
+    const toneMap = {
+      concerned: [660, 0.08, "sawtooth", 0.03],
+      joyful: [980, 0.06, "triangle", 0.03],
+      curious: [760, 0.06, "sine", 0.028],
+      alert: [720, 0.07, "square", 0.032],
+    };
+    const tone = toneMap[mood.tone] || [880, 0.06, "sine", 0.035];
+    playTone(tone[0], tone[1], tone[2], tone[3]);
   };
   utterance.onend = () => {
     state.speaking = false;
