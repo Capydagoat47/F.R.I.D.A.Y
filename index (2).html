@@ -66,6 +66,7 @@
           <div class="panel-head panel-head-center">
             <span>FRIDAY // CORE</span>
             <span class="head-chip" id="modelChip">Gemini 2.5 Flash</span>
+            <span class="head-chip" id="protocolChip">Core Protocol</span>
             <span class="head-chip" id="wakeChip">Hey Friday</span>
             <span class="head-chip" id="ownerChip">Boss: Kenan Novruzov</span>
           </div>
@@ -134,6 +135,7 @@
       </div>
       <div class="dock-actions">
         <button id="voiceBtn">Voice</button>
+        <button id="voiceProfileBtn">Voice</button>
         <button id="protocolBtn">Protocol</button>
         <button id="wakeBtn">Wake</button>
         <button id="ambientBtn">Ambient</button>
@@ -157,6 +159,16 @@
     <button data-protocol="vision">Vision</button>
     <button data-protocol="brain">Brain</button>
     <button data-protocol="titan">Titan</button>
+  </div>
+
+  <!-- Voice Profile Menu -->
+  <div class="voice-profile-menu hidden" id="voiceProfileMenu">
+    <div class="protocol-title">VOICE PROFILE</div>
+    <button data-profile="friday">F.R.I.D.A.Y.</button>
+    <button data-profile="cinematic">Cinematic</button>
+    <button data-profile="natural">Natural</button>
+    <button data-profile="fast">Fast</button>
+    <button data-profile="jarvis">J.A.R.V.I.S.</button>
   </div>
 </body>
 </html>

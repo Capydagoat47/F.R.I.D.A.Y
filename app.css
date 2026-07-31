@@ -1610,3 +1610,162 @@ body[data-friday-mode="thinking"] .orb-title {
   }
   .three-stage, .particle-canvas { display: none; }
 }
+
+
+/* Protocol Chip */
+#protocolChip {
+  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.2), rgba(var(--blue-rgb), 0.15));
+  border-color: rgba(var(--cyan-rgb), 0.5);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  animation: status-pulse 3s ease-in-out infinite;
+}
+
+/* Protocol Menu - ensure above everything */
+.protocol-menu {
+  z-index: 10000 !important;
+}
+
+/* Protocol button active state */
+#protocolBtn.active {
+  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.3), rgba(var(--blue-rgb), 0.2));
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* Scanlines/vignette/noise should NOT block clicks */
+.scanlines,
+.vignette,
+.noise {
+  pointer-events: none !important;
+}
+
+/* Ensure toast stack is above overlays */
+.toast-stack {
+  z-index: 10001;
+}
+
+/* Boot screen above overlays */
+.boot {
+  z-index: 10002;
+}
+
+/* Panel head center wrap fix */
+.panel-head-center {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Enhanced protocol menu items with color indicators */
+.protocol-menu button[data-protocol="core"] { border-left: 3px solid #59E6FF; }
+.protocol-menu button[data-protocol="forge"] { border-left: 3px solid #FF9B32; }
+.protocol-menu button[data-protocol="atlas"] { border-left: 3px solid #9D6CFF; }
+.protocol-menu button[data-protocol="barn_door"] { border-left: 3px solid #FF4040; }
+.protocol-menu button[data-protocol="vector"] { border-left: 3px solid #4CFF4C; }
+.protocol-menu button[data-protocol="vision"] { border-left: 3px solid #C26CFF; }
+.protocol-menu button[data-protocol="brain"] { border-left: 3px solid #7EEFFF; }
+.protocol-menu button[data-protocol="titan"] { border-left: 3px solid #FFD54A; }
+
+/* Active protocol highlight in menu */
+.protocol-menu button.active-protocol {
+  background: rgba(var(--cyan-rgb), 0.25) !important;
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 20px rgba(var(--cyan-rgb), 0.3);
+}
+
+
+
+/* ─── VOICE PROFILE MENU ─── */
+.voice-profile-menu {
+  position: fixed;
+  bottom: 95px;
+  right: 24px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(8, 14, 24, 0.92);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(var(--cyan-rgb), 0.28);
+  box-shadow:
+    0 0 50px rgba(var(--cyan-rgb), 0.15),
+    0 20px 60px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  z-index: 10000;
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.voice-profile-menu.hidden {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  pointer-events: none;
+}
+
+.voice-profile-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(var(--cyan-rgb), 0.18);
+  color: white;
+  padding: 14px 18px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: var(--font-hud);
+  letter-spacing: 0.06em;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.voice-profile-menu button:hover {
+  transform: translateX(8px) scale(1.02);
+  border-color: var(--cyan);
+  background: rgba(var(--cyan-rgb), 0.15);
+  box-shadow: 0 0 25px rgba(var(--cyan-rgb), 0.25), 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.voice-profile-menu button::after {
+  content: '›';
+  font-size: 1.2rem;
+  opacity: 0.5;
+  transition: all 0.2s ease;
+}
+
+.voice-profile-menu button:hover::after {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.voice-profile-menu button.active-profile {
+  background: rgba(var(--cyan-rgb), 0.25) !important;
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 20px rgba(var(--cyan-rgb), 0.3);
+}
+
+/* Voice profile color indicators */
+.voice-profile-menu button[data-profile="friday"] { border-left: 3px solid #59E6FF; }
+.voice-profile-menu button[data-profile="cinematic"] { border-left: 3px solid #C26CFF; }
+.voice-profile-menu button[data-profile="natural"] { border-left: 3px solid #4CFF4C; }
+.voice-profile-menu button[data-profile="fast"] { border-left: 3px solid #FFD54A; }
+.voice-profile-menu button[data-profile="jarvis"] { border-left: 3px solid #FF9B32; }
+
+/* Voice button active state */
+#voiceProfileBtn.active {
+  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.3), rgba(var(--blue-rgb), 0.2));
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* Responsive voice menu */
+@media (max-width: 780px) {
+  .voice-profile-menu {
+    bottom: 85px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}

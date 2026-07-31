@@ -76,8 +76,35 @@ if not GEMINI_API_KEYS:
     print("WARNING: No Gemini API keys found. FRIDAY will run in fallback mode until an API key is configured.")
 _LOCK = threading.Lock()
 
+def build_protocol_awareness():
+    """Build a section that tells FRIDAY about available protocols."""
+    from protocols import get_all_protocols, protocol_name, current_protocol
+    protocols = get_all_protocols()
+    current = current_protocol()
+    lines = [
+        "=== AVAILABLE PROTOCOLS ===",
+        f"Current protocol: {protocol_name()} (id: {current})",
+        "",
+        "You can switch between these specialized modes:",
+    ]
+    for key, proto in protocols.items():
+        if proto.get("hidden"):
+            continue
+        name = proto.get("name", key)
+        desc = proto.get("description", "")
+        lines.append(f"  • {name} ({key}): {desc}")
+    lines.append("")
+    lines.append("When the user asks about protocols, list them confidently.")
+    lines.append("When the user says 'switch to [protocol]' or 'use [protocol] protocol', acknowledge the switch.")
+    lines.append("Each protocol changes your color theme, voice tone, and operational focus.")
+    lines.append("=== END PROTOCOLS ===")
+    return "\n".join(lines)
+
+
 FRIDAY_CORE_PROMPT = (
     protocol_prompt()
+    + "\n\n"
+    + build_protocol_awareness()
     + "\n\n"
     + "You are FRIDAY, a cinematic desktop intelligence. "
     "You are calm, elegant, fast, loyal, and precise. "
@@ -93,9 +120,6 @@ FRIDAY_CORE_PROMPT = (
     "If the user asks for a machine action, answer clearly and briefly. "
     "If the request is ambiguous, ask one direct clarifying question."
 )
-
-
-
 def resolve_model(model: str | None = None) -> str:
     candidate = (model or os.getenv("FRIDAY_AI_MODEL") or DEFAULT_MODEL).strip()
     if candidate in SUPPORTED_MODELS:
