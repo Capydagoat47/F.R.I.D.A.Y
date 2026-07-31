@@ -41,6 +41,10 @@ const state = {
   threeOrb: null,
   lastVoiceDispatchAt: 0,
   reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches || false,
+  particleCtx: null,
+  particles: [],
+  mouseX: 0,
+  mouseY: 0,
 };
 
 const QUICK_COMMANDS = [
@@ -117,13 +121,10 @@ function sleep(ms) {
 }
 
 function computeRms(samples) {
-  if (!samples || !samples.length) {
-    return 0;
-  }
+  if (!samples || !samples.length) return 0;
   let total = 0;
-  for (let index = 0; index < samples.length; index += 1) {
-    const value = samples[index];
-    total += value * value;
+  for (let i = 0; i < samples.length; i++) {
+    total += samples[i] * samples[i];
   }
   return Math.sqrt(total / samples.length);
 }
@@ -143,13 +144,11 @@ function encodeWavBuffer(samples, sampleRate) {
   const bytesPerSample = 2;
   const buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
   const view = new DataView(buffer);
-
   const writeString = (offset, value) => {
-    for (let index = 0; index < value.length; index += 1) {
-      view.setUint8(offset + index, value.charCodeAt(index));
+    for (let i = 0; i < value.length; i++) {
+      view.setUint8(offset + i, value.charCodeAt(i));
     }
   };
-
   writeString(0, "RIFF");
   view.setUint32(4, 36 + samples.length * bytesPerSample, true);
   writeString(8, "WAVE");
@@ -163,10 +162,9 @@ function encodeWavBuffer(samples, sampleRate) {
   view.setUint16(34, 16, true);
   writeString(36, "data");
   view.setUint32(40, samples.length * bytesPerSample, true);
-
   let offset = 44;
-  for (let index = 0; index < samples.length; index += 1) {
-    const value = clamp(samples[index], -1, 1);
+  for (let i = 0; i < samples.length; i++) {
+    const value = clamp(samples[i], -1, 1);
     view.setInt16(offset, value < 0 ? value * 0x8000 : value * 0x7fff, true);
     offset += bytesPerSample;
   }
@@ -177,8 +175,8 @@ function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   const chunkSize = 0x8000;
   let binary = "";
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const slice = bytes.subarray(index, index + chunkSize);
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const slice = bytes.subarray(i, i + chunkSize);
     binary += String.fromCharCode(...slice);
   }
   return btoa(binary);
@@ -195,9 +193,7 @@ function escapeHtml(text) {
 
 async function apiGet(path) {
   const response = await fetch(path, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error(`GET ${path} failed`);
-  }
+  if (!response.ok) throw new Error(`GET ${path} failed`);
   return response.json();
 }
 
@@ -220,65 +216,71 @@ function setEnergy(value) {
   document.documentElement.style.setProperty("--energy", state.energy.toFixed(2));
 }
 
-function setBootProgress(percent) {
-  document.documentElement.style.setProperty("--boot-progress", `${percent}%`);
-  if (els.bootBar) {
-    els.bootBar.style.width = `${percent}%`;
+function setFridayMode(mode) {
+  document.body.setAttribute("data-friday-mode", mode);
+  if (mode === "listening") {
+    setEnergy(0.85);
+  } else if (mode === "speaking") {
+    setEnergy(0.65);
+  } else if (mode === "thinking") {
+    setEnergy(0.5);
+  } else {
+    setEnergy(0.34);
   }
 }
 
-function showToast(title, message) {
-  if (!els.toastStack) {
-    return;
-  }
+function setBootProgress(percent) {
+  document.documentElement.style.setProperty("--boot-progress", `${percent}%`);
+  if (els.bootBar) els.bootBar.style.width = `${percent}%`;
+}
+
+function showToast(title, message, type = "info") {
+  if (!els.toastStack) return;
   const toast = document.createElement("div");
-  toast.className = "toast";
+  toast.className = `toast ${type}`;
   toast.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span>`;
   els.toastStack.prepend(toast);
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateX(12px)";
-    setTimeout(() => toast.remove(), 220);
-  }, 3200);
+    toast.style.transform = "translateX(16px) scale(0.95)";
+    setTimeout(() => toast.remove(), 300);
+  }, 3800);
+}
+
+function showError(message) {
+  showToast("Error", message, "error");
+  const orb = document.querySelector(".orb-panel");
+  if (orb) {
+    orb.classList.add("error-shake");
+    setTimeout(() => orb.classList.remove("error-shake"), 600);
+  }
+}
+
+function showSuccess(title, message) {
+  showToast(title, message, "success");
 }
 
 function formatClock(date = new Date()) {
-  return date.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function formatDate(date = new Date()) {
-  return date.toLocaleDateString([], {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
 function formatNumber(value, digits = 1) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return "—";
-  }
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
   return Number(value).toFixed(digits);
 }
 
 function formatBytes(mb) {
-  if (mb === null || mb === undefined) {
-    return "—";
-  }
-  if (mb >= 1024) {
-    return `${(mb / 1024).toFixed(1)} GB`;
-  }
+  if (mb === null || mb === undefined) return "—";
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
   return `${mb.toFixed(1)} MB`;
 }
 
 function formatMetricPercent(value) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
+  if (value === null || value === undefined) return "—";
   return `${Math.round(Number(value))}%`;
 }
 
@@ -298,36 +300,24 @@ function updateChips() {
   els.wakeChip.textContent = state.wakeArmed ? "FRIDAY" : "Direct";
   const ownerName = data.owner_name || data.owner_profile?.name || "Kenan Novruzov";
   const ownerTitle = data.owner_title || data.owner_profile?.title || "Boss";
-  if (els.ownerChip) {
-    els.ownerChip.textContent = `${ownerTitle}: ${ownerName}`;
-  }
+  if (els.ownerChip) els.ownerChip.textContent = `${ownerTitle}: ${ownerName}`;
   els.voiceChip.textContent = state.speaking ? "Speaking" : state.listening ? "Listening" : "Voice idle";
   els.listenChip.textContent = state.wakeArmed ? "Wake word armed" : "Direct capture";
   els.telemetryChip.textContent = "Telemetry live";
   els.memoryChip.textContent = `${(data.notes || []).length} notes`;
-  if (els.powerChip) {
-    els.powerChip.textContent = `Power ${data.power_state || "online"}`;
-  }
-  if (els.securityChip) {
-    els.securityChip.textContent = `Security ${data.security_mode || "normal"}`;
-  }
+  if (els.powerChip) els.powerChip.textContent = `Power ${data.power_state || "online"}`;
+  if (els.securityChip) els.securityChip.textContent = `Security ${data.security_mode || "normal"}`;
   els.timeChip.textContent = formatClock();
   els.memorySummary.textContent = memorySummary();
   els.metricsSummary.textContent = summarizeMetrics(state.metrics);
   els.voiceSummary.textContent = voiceSummaryText();
   els.quickSummary.textContent = "Natural-language requests, safe web links, web search, timers, memory, telemetry, power states, and simulated HUD security.";
-  els.statusLine.textContent = state.speaking
-    ? "FRIDAY is speaking."
-    : state.listening
-      ? "FRIDAY is listening."
-      : "FRIDAY online.";
+  els.statusLine.textContent = state.speaking ? "FRIDAY is speaking." : state.listening ? "FRIDAY is listening." : "FRIDAY online.";
   els.subLine.textContent = memorySummary();
 }
 
 function summarizeMetrics(metrics) {
-  if (!metrics) {
-    return "Telemetry is warming up.";
-  }
+  if (!metrics) return "Telemetry is warming up.";
   const parts = [];
   if (metrics.cpu_percent !== null && metrics.cpu_percent !== undefined) {
     parts.push(`CPU ${formatMetricPercent(metrics.cpu_percent)}`);
@@ -352,15 +342,11 @@ function summarizeMetrics(metrics) {
 }
 
 function voiceSummaryText() {
-  if (!("speechSynthesis" in window)) {
-    return "Speech synthesis unavailable in this browser.";
-  }
+  if (!("speechSynthesis" in window)) return "Speech synthesis unavailable in this browser.";
   const ownerName = currentState().owner_name || currentState().owner_profile?.name || "Kenan Novruzov";
   const voice = state.selectedVoice ? `Selected voice: ${state.selectedVoice.name}` : "Browser voice ready.";
   const capture = state.listening
-    ? state.transcribing
-      ? "Transcribing microphone input."
-      : "Microphone capture armed."
+    ? state.transcribing ? "Transcribing microphone input." : "Microphone capture armed."
     : "Microphone capture ready.";
   return `${voice} ${capture} Boss profile: ${ownerName}.`;
 }
@@ -387,14 +373,13 @@ function applyProtocolColors(colors) {
   root.style.setProperty("--cyan-rgb", hexToRgb(primary));
   root.style.setProperty("--blue", secondary);
   root.style.setProperty("--blue-rgb", hexToRgb(secondary));
-  // Update three.js orb colors if initialized
   if (state.threeOrb && state.threeScene) {
     try {
       state.threeOrb.material.color.set(primary);
       state.threeScene.ring.material.color.set(secondary);
       state.threeScene.points.material.color.set(primary);
     } catch {
-      // ignore three.js color update errors
+      // ignore
     }
   }
 }
@@ -406,7 +391,7 @@ async function loadProtocol() {
       applyProtocolColors(data.protocol.colors);
     }
   } catch {
-    // ignore protocol load errors
+    // ignore
   }
 }
 
@@ -415,19 +400,184 @@ async function switchProtocol(name) {
     const data = await apiPost("/api/protocol", { protocol: name });
     if (data.ok && data.protocol && data.protocol.colors) {
       applyProtocolColors(data.protocol.colors);
-      showToast("Protocol", `${data.protocol.name} protocol engaged.`);
-      // Update boot sequence text if needed
+      showSuccess("Protocol", `${data.protocol.name} protocol engaged.`);
       const protocolVoice = data.protocol.voice || `${data.protocol.name} protocol engaged.`;
       updateTranscript(protocolVoice, false);
       finalizeSpeech(protocolVoice, { mood: { tone: "neutral", rate: 0.95, pitch: 0.86, volume: 1 } });
     } else {
-      showToast("Protocol", "Failed to switch protocol.");
+      showError("Failed to switch protocol.");
     }
   } catch (err) {
-    showToast("Protocol", err instanceof Error ? err.message : "Protocol switch failed.");
+    showError(err instanceof Error ? err.message : "Protocol switch failed.");
   }
 }
 
+/* ─── PARTICLE SYSTEM ─── */
+function initParticles() {
+  const canvas = document.createElement("canvas");
+  canvas.className = "particle-canvas";
+  const shell = document.querySelector(".orb-shell");
+  if (!shell || state.reducedMotion) return;
+  shell.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  state.particleCtx = ctx;
+
+  function resize() {
+    const rect = shell.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  const particleCount = 40;
+  state.particles = [];
+  for (let i = 0; i < particleCount; i++) {
+    state.particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      size: Math.random() * 2 + 0.5,
+      opacity: Math.random() * 0.5 + 0.1,
+      pulse: Math.random() * Math.PI * 2,
+    });
+  }
+
+  function animate() {
+    if (!state.particleCtx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const energy = state.energy;
+    const rgb = getComputedStyle(document.documentElement).getPropertyValue("--cyan-rgb").trim() || "89, 230, 255";
+
+    state.particles.forEach((p, i) => {
+      p.x += p.vx * (1 + energy);
+      p.y += p.vy * (1 + energy);
+      p.pulse += 0.02 + energy * 0.03;
+
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+
+      const pulseOpacity = p.opacity * (0.7 + 0.3 * Math.sin(p.pulse));
+      const size = p.size * (1 + energy * 0.5);
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${rgb}, ${pulseOpacity})`;
+      ctx.fill();
+
+      // Connect nearby particles
+      for (let j = i + 1; j < state.particles.length; j++) {
+        const p2 = state.particles[j];
+        const dx = p.x - p2.x;
+        const dy = p.y - p2.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 80 * energy + 40) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.strokeStyle = `rgba(${rgb}, ${0.08 * energy})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+/* ─── MOUSE PARALLAX ─── */
+function initMouseParallax() {
+  if (state.reducedMotion) return;
+  document.addEventListener("mousemove", (e) => {
+    state.mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    state.mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+
+    const orbShell = document.querySelector(".orb-shell");
+    if (orbShell) {
+      const moveX = state.mouseX * 8;
+      const moveY = state.mouseY * 8;
+      orbShell.style.transform = `perspective(1000px) rotateY(${moveX * 0.3}deg) rotateX(${-moveY * 0.3}deg)`;
+    }
+  });
+}
+
+/* ─── MAGNETIC BUTTONS ─── */
+function initMagneticButtons() {
+  if (window.matchMedia("(pointer: coarse)").matches) return;
+  document.querySelectorAll("button").forEach(btn => {
+    btn.classList.add("magnetic");
+    btn.addEventListener("mousemove", (e) => {
+      const rect = btn.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px) translateY(-2px) scale(1.03)`;
+    });
+    btn.addEventListener("mouseleave", () => {
+      btn.style.transform = "";
+    });
+  });
+}
+
+/* ─── TEXT SCRAMBLE ─── */
+class TextScramble {
+  constructor(el) {
+    this.el = el;
+    this.chars = "!<>-_\\/[]{}—=+*^?#________";
+    this.update = this.update.bind(this);
+  }
+  setText(newText) {
+    const oldText = this.el.innerText;
+    const length = Math.max(oldText.length, newText.length);
+    const promise = new Promise((resolve) => this.resolve = resolve);
+    this.queue = [];
+    for (let i = 0; i < length; i++) {
+      const from = oldText[i] || "";
+      const to = newText[i] || "";
+      const start = Math.floor(Math.random() * 20);
+      const end = start + Math.floor(Math.random() * 20);
+      this.queue.push({ from, to, start, end });
+    }
+    cancelAnimationFrame(this.frameRequest);
+    this.frame = 0;
+    this.update();
+    return promise;
+  }
+  update() {
+    let output = "";
+    let complete = 0;
+    for (let i = 0, n = this.queue.length; i < n; i++) {
+      let { from, to, start, end, char } = this.queue[i];
+      if (this.frame >= end) {
+        complete++;
+        output += to;
+      } else if (this.frame >= start) {
+        if (!char || Math.random() < 0.28) {
+          char = this.randomChar();
+          this.queue[i].char = char;
+        }
+        output += `<span style="color: rgba(var(--cyan-rgb), 0.6)">${char}</span>`;
+      } else {
+        output += from;
+      }
+    }
+    this.el.innerHTML = output;
+    if (complete === this.queue.length) {
+      this.resolve();
+    } else {
+      this.frameRequest = requestAnimationFrame(this.update);
+      this.frame++;
+    }
+  }
+  randomChar() {
+    return this.chars[Math.floor(Math.random() * this.chars.length)];
+  }
+}
+
+/* ─── RENDER FUNCTIONS ─── */
 function renderLeftPanel() {
   const data = currentState();
   const view = state.view;
@@ -525,8 +675,6 @@ function renderRightPanel() {
   const gpu = metrics.gpu || {};
   const network = metrics.network || {};
   const vision = data.camera_status || {};
-  const processes = metrics.processes || [];
-  const weather = state.weather;
   const uptime = metrics.uptime || "—";
   const ramUsedText = ram.used_gb !== undefined && ram.total_gb !== undefined
     ? `${formatNumber(ram.used_gb)} / ${formatNumber(ram.total_gb)} GB`
@@ -536,8 +684,8 @@ function renderRightPanel() {
   const gpuUtil = gpu.utilization ?? 0;
   const networkName = network.name || "Offline";
   const cameraStatus = vision.status || "Inactive";
-  const weatherSummary = weather
-    ? (weather.condition || weather.summary || (weather.temperature !== undefined ? `${formatNumber(weather.temperature)}°` : "Unknown"))
+  const weatherSummary = state.weather
+    ? (state.weather.condition || state.weather.summary || (state.weather.temperature !== undefined ? `${formatNumber(state.weather.temperature)}°` : "Unknown"))
     : "Unknown";
 
   els.rightPanel.innerHTML = `
@@ -593,4 +741,413 @@ function renderRightPanel() {
       </div>
     </div>
   `;
+}
+
+/* ─── ENHANCED AUDIO WAVE VISUALIZATION ─── */
+function drawWaveform() {
+  const canvas = els.waveCanvas;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const width = rect.width;
+  const height = rect.height;
+  const centerY = height / 2;
+
+  let time = 0;
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    const energy = state.energy;
+    const rgb = getComputedStyle(document.documentElement).getPropertyValue("--cyan-rgb").trim() || "89, 230, 255";
+
+    if (state.listening || state.speaking || energy > 0.5) {
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${rgb}, ${0.3 + energy * 0.4})`;
+      ctx.lineWidth = 2;
+
+      for (let x = 0; x < width; x += 2) {
+        const normalizedX = x / width;
+        const wave1 = Math.sin(normalizedX * Math.PI * 8 + time) * (energy * 20);
+        const wave2 = Math.sin(normalizedX * Math.PI * 14 + time * 1.5) * (energy * 12);
+        const wave3 = Math.sin(normalizedX * Math.PI * 4 + time * 0.7) * (energy * 8);
+        const y = centerY + wave1 + wave2 + wave3;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Second mirrored wave
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${rgb}, ${0.15 + energy * 0.2})`;
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x < width; x += 2) {
+        const normalizedX = x / width;
+        const wave1 = Math.sin(normalizedX * Math.PI * 6 + time + 1) * (energy * 15);
+        const wave2 = Math.sin(normalizedX * Math.PI * 10 + time * 1.2) * (energy * 10);
+        const y = centerY - wave1 - wave2;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    time += 0.05 + energy * 0.08;
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ─── BOOT SEQUENCE ─── */
+async function runBootSequence() {
+  const logs = [
+    "Initializing FRIDAY core systems...",
+    "Loading neural interface modules...",
+    "Calibrating optical sensors...",
+    "Syncing memory banks...",
+    "Establishing secure connection...",
+    "Loading protocol definitions...",
+    "Voice synthesis engine ready...",
+    "Telemetry systems online...",
+    "Wake word detection armed...",
+    "Boss profile loaded: Kenan Novruzov",
+    "FRIDAY is online.",
+  ];
+
+  for (let i = 0; i < logs.length; i++) {
+    const line = document.createElement("div");
+    line.className = "boot-line";
+    line.style.animationDelay = "0ms";
+    line.textContent = logs[i];
+    els.bootLog.appendChild(line);
+    setBootProgress(Math.round(((i + 1) / logs.length) * 100));
+    await sleep(180 + Math.random() * 150);
+  }
+
+  await sleep(400);
+  els.boot.classList.add("hidden");
+  document.body.classList.add("ready");
+  state.bootComplete = true;
+
+  // Initialize effects after boot
+  initParticles();
+  initMouseParallax();
+  setTimeout(initMagneticButtons, 500);
+  drawWaveform();
+}
+
+/* ─── EVENT LISTENERS ─── */
+function initEventListeners() {
+  // Tab switching
+  els.leftTabs.addEventListener("click", (e) => {
+    const tab = e.target.closest(".tab");
+    if (!tab) return;
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    state.view = tab.dataset.view;
+
+    // Animate panel transition
+    els.leftPanel.style.opacity = "0";
+    els.leftPanel.style.transform = "translateX(-10px)";
+    setTimeout(() => {
+      renderLeftPanel();
+      els.leftPanel.style.transition = "opacity 300ms ease, transform 300ms ease";
+      els.leftPanel.style.opacity = "1";
+      els.leftPanel.style.transform = "translateX(0)";
+    }, 150);
+  });
+
+  // Command input
+  els.commandInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  els.sendBtn.addEventListener("click", sendMessage);
+
+  // Voice button
+  els.voiceBtn.addEventListener("click", toggleVoice);
+
+  // Protocol button
+  if (els.protocolBtn && els.protocolMenu) {
+    els.protocolBtn.addEventListener("click", () => {
+      els.protocolMenu.classList.toggle("hidden");
+    });
+
+    els.protocolMenu.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-protocol]");
+      if (!btn) return;
+      switchProtocol(btn.dataset.protocol);
+      els.protocolMenu.classList.add("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!els.protocolMenu.contains(e.target) && e.target !== els.protocolBtn) {
+        els.protocolMenu.classList.add("hidden");
+      }
+    });
+  }
+
+  // Wake button
+  els.wakeBtn.addEventListener("click", () => {
+    state.wakeArmed = !state.wakeArmed;
+    updateChips();
+    showToast("Wake Word", state.wakeArmed ? "Wake word armed." : "Direct capture mode.");
+  });
+
+  // Fullscreen
+  els.fullBtn.addEventListener("click", () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  // Clear
+  els.clearBtn.addEventListener("click", async () => {
+    try {
+      await apiPost("/api/clear");
+      state.data = null;
+      await syncState();
+      showSuccess("Memory", "Memory cleared successfully.");
+    } catch (err) {
+      showError("Failed to clear memory.");
+    }
+  });
+
+  // Left panel click delegation
+  els.leftPanel.addEventListener("click", (e) => {
+    const cmdCard = e.target.closest(".command-card");
+    if (cmdCard) {
+      const command = cmdCard.dataset.command;
+      if (command) {
+        els.commandInput.value = command;
+        sendMessage();
+      }
+      return;
+    }
+
+    const checkbox = e.target.closest('input[type="checkbox"][data-task-id]');
+    if (checkbox) {
+      const taskId = checkbox.dataset.taskId;
+      apiPost("/api/task/complete", { target: taskId })
+        .then(() => syncState())
+        .catch(() => showError("Failed to update task."));
+    }
+  });
+}
+
+/* ─── MESSAGE HANDLING ─── */
+async function sendMessage() {
+  const text = els.commandInput.value.trim();
+  if (!text) return;
+  els.commandInput.value = "";
+
+  setFridayMode("thinking");
+
+  try {
+    const result = await apiPost("/api/chat", { text, source: "typed" });
+    if (result.state) state.data = result.state;
+
+    renderLeftPanel();
+    renderRightPanel();
+    updateChips();
+
+    if (result.reply) {
+      updateTranscript(result.reply, false);
+      if (state.speaking) {
+        finalizeSpeech(result.reply, { mood: { tone: "neutral", rate: 0.95, pitch: 0.9, volume: 1 } });
+      }
+    }
+
+    setFridayMode("idle");
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "Message failed.");
+    setFridayMode("idle");
+  }
+}
+
+function updateTranscript(text, isInterim) {
+  els.transcriptLine.textContent = text;
+  if (!isInterim) {
+    els.transcriptLine.style.animation = "none";
+    els.transcriptLine.offsetHeight; // trigger reflow
+    els.transcriptLine.style.animation = "boot-fade 400ms ease";
+  }
+}
+
+function finalizeSpeech(text, options) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = options?.mood?.rate ?? 0.95;
+  utterance.pitch = options?.mood?.pitch ?? 0.9;
+  utterance.volume = options?.mood?.volume ?? 1;
+  if (state.selectedVoice) utterance.voice = state.selectedVoice;
+
+  utterance.onstart = () => {
+    state.speaking = true;
+    setFridayMode("speaking");
+    updateChips();
+  };
+
+  utterance.onend = () => {
+    state.speaking = false;
+    setFridayMode("idle");
+    updateChips();
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+/* ─── VOICE ─── */
+async function toggleVoice() {
+  if (state.listening) {
+    stopListening();
+  } else {
+    startListening();
+  }
+}
+
+function startListening() {
+  state.listening = true;
+  setFridayMode("listening");
+  updateChips();
+  showToast("Voice", "Listening... Speak now.");
+
+  if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    state.recognition = new SpeechRecognition();
+    state.recognition.continuous = true;
+    state.recognition.interimResults = true;
+    state.recognition.lang = "en-US";
+
+    state.recognition.onresult = (e) => {
+      let final = "";
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      if (interim) updateTranscript(interim, true);
+      if (final) {
+        updateTranscript(final, false);
+        handleVoiceInput(final);
+      }
+    };
+
+    state.recognition.onerror = () => {
+      stopListening();
+    };
+
+    state.recognition.onend = () => {
+      if (state.listening) {
+        try { state.recognition.start(); } catch { stopListening(); }
+      }
+    };
+
+    try { state.recognition.start(); } catch { stopListening(); }
+  }
+}
+
+function stopListening() {
+  state.listening = false;
+  setFridayMode("idle");
+  updateChips();
+  if (state.recognition) {
+    try { state.recognition.stop(); } catch {}
+    state.recognition = null;
+  }
+}
+
+async function handleVoiceInput(text) {
+  setFridayMode("thinking");
+  try {
+    const result = await apiPost("/api/chat", { text, source: "voice" });
+    if (result.state) state.data = result.state;
+    renderLeftPanel();
+    renderRightPanel();
+    updateChips();
+    if (result.reply) {
+      finalizeSpeech(result.reply, { mood: { tone: "neutral", rate: 0.95, pitch: 0.9, volume: 1 } });
+    }
+  } catch (err) {
+    showError("Voice command failed.");
+  }
+  setFridayMode(state.listening ? "listening" : "idle");
+}
+
+/* ─── SYNC ─── */
+async function syncState() {
+  try {
+    const data = await apiGet("/api/state");
+    state.data = data;
+    renderLeftPanel();
+    renderRightPanel();
+    updateChips();
+    if (data.protocol?.colors) applyProtocolColors(data.protocol.colors);
+  } catch {
+    // silent fail
+  }
+}
+
+async function syncMetrics() {
+  try {
+    const data = await apiGet("/api/metrics");
+    state.metrics = data;
+    renderRightPanel();
+    updateChips();
+  } catch {
+    // silent fail
+  }
+}
+
+/* ─── CLOCK ─── */
+function startClock() {
+  setInterval(() => {
+    els.timeChip.textContent = formatClock();
+  }, 1000);
+}
+
+/* ─── INIT ─── */
+async function init() {
+  await syncState();
+  await syncMetrics();
+  initEventListeners();
+  startClock();
+  runBootSequence();
+
+  // Periodic sync
+  setInterval(syncMetrics, 5000);
+  setInterval(syncState, 10000);
+
+  // Load voices
+  if ("speechSynthesis" in window) {
+    const loadVoices = () => {
+      state.voices = window.speechSynthesis.getVoices();
+      const preferred = state.voices.find(v => v.name.includes("Google US English") || v.name.includes("Samantha"));
+      if (preferred) state.selectedVoice = preferred;
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }
+
+  // Load protocol
+  loadProtocol();
+}
+
+// Start when DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
 }
