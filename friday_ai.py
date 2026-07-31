@@ -10,7 +10,6 @@ from protocols import protocol_prompt
 
 import requests
 from google import genai
-from google.genai import _interactions as genai_interactions
 
 # Expose genai as the client variable used below. Configuration (API key)
 # is applied dynamically before requests when needed.
@@ -226,17 +225,17 @@ def _responses_call(
             error = str(exc)
             is_quota_exhausted = False
 
-            if isinstance(exc, getattr(genai_interactions, 'RateLimitError', ())):
+            # Check for rate limit / quota errors generically
+            status_code = getattr(exc, 'status_code', None) or getattr(exc, 'code', None)
+            if status_code == 429:
                 is_quota_exhausted = True
-            elif isinstance(exc, getattr(genai_interactions, 'APIStatusError', ())):
-                status_code = getattr(exc, 'status_code', None)
-                if status_code == 429:
-                    is_quota_exhausted = True
             elif "429" in error:
                 is_quota_exhausted = True
             elif "RESOURCE_EXHAUSTED" in error.upper():
                 is_quota_exhausted = True
             elif "quota" in error.lower():
+                is_quota_exhausted = True
+            elif "rate limit" in error.lower():
                 is_quota_exhausted = True
 
             if is_quota_exhausted:
