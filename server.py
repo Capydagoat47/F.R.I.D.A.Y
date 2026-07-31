@@ -285,6 +285,19 @@ def public_state() -> dict[str, Any]:
         "title": STATE.get("owner_title", OWNER_TITLE),
     }
 
+    # Include current protocol info for HUD color theming
+    from protocols import current_protocol, get_protocol
+    proto_name = current_protocol()
+    proto = get_protocol(proto_name)
+    if proto:
+        payload["protocol"] = {
+            "id": proto_name,
+            "name": proto.get("name", proto_name),
+            "colors": proto.get("colors", {}),
+            "status": proto.get("status", ""),
+            "voice": proto.get("voice", ""),
+        }
+
     return payload
 
 

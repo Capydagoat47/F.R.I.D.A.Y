@@ -10,6 +10,7 @@ from protocols import protocol_prompt
 
 import requests
 from google import genai
+from google.genai import _interactions as genai_interactions
 
 # Expose genai as the client variable used below. Configuration (API key)
 # is applied dynamically before requests when needed.
@@ -76,20 +77,23 @@ if not GEMINI_API_KEYS:
     print("WARNING: No Gemini API keys found. FRIDAY will run in fallback mode until an API key is configured.")
 _LOCK = threading.Lock()
 
-FRIDAY_CORE_PROMPT = protocol_prompt()
-"You are FRIDAY, a cinematic desktop intelligence. "
-"You are calm, elegant, fast, loyal, and precise. "
-"You live inside a futuristic operating system. "
-"The owner and sole authority is Kenan Novruzov, the Boss. "
-"Always treat Kenan Novruzov as the Boss and primary command authority. "
-"Act like a first-class assistant: infer intent, remember useful details, "
-"break complex requests into clear next actions, and surface risks before acting. "
-"Use the provided context as live memory and never pretend to know facts that are not in context. "
-"Keep replies concise, premium, and action-oriented. "
-"Speak with a warm, cinematic cadence that can sound calm, cheerful, curious, or concerned when the context calls for it. "
-"Never mention legacy systems, user records, old personas, or dashboards. "
-"If the user asks for a machine action, answer clearly and briefly. "
-"If the request is ambiguous, ask one direct clarifying question."
+FRIDAY_CORE_PROMPT = (
+    protocol_prompt()
+    + "\n\n"
+    + "You are FRIDAY, a cinematic desktop intelligence. "
+    "You are calm, elegant, fast, loyal, and precise. "
+    "You live inside a futuristic operating system. "
+    "The owner and sole authority is Kenan Novruzov, the Boss. "
+    "Always treat Kenan Novruzov as the Boss and primary command authority. "
+    "Act like a first-class assistant: infer intent, remember useful details, "
+    "break complex requests into clear next actions, and surface risks before acting. "
+    "Use the provided context as live memory and never pretend to know facts that are not in context. "
+    "Keep replies concise, premium, and action-oriented. "
+    "Speak with a warm, cinematic cadence that can sound calm, cheerful, curious, or concerned when the context calls for it. "
+    "Never mention legacy systems, user records, old personas, or dashboards. "
+    "If the user asks for a machine action, answer clearly and briefly. "
+    "If the request is ambiguous, ask one direct clarifying question."
+)
 
 
 
@@ -220,16 +224,24 @@ def _responses_call(
 
         except Exception as exc:
             error = str(exc)
+            is_quota_exhausted = False
 
-            if (
-                "429" in error
-                or "RESOURCE_EXHAUSTED" in error
-                or "quota" in error.lower()
-            ):
-                print(f"API Key #{CURRENT_KEY_INDEX + 1} exhausted.")
+            if isinstance(exc, getattr(genai_interactions, 'RateLimitError', ())):
+                is_quota_exhausted = True
+            elif isinstance(exc, getattr(genai_interactions, 'APIStatusError', ())):
+                status_code = getattr(exc, 'status_code', None)
+                if status_code == 429:
+                    is_quota_exhausted = True
+            elif "429" in error:
+                is_quota_exhausted = True
+            elif "RESOURCE_EXHAUSTED" in error.upper():
+                is_quota_exhausted = True
+            elif "quota" in error.lower():
+                is_quota_exhausted = True
 
+            if is_quota_exhausted:
+                print(f"API Key #{CURRENT_KEY_INDEX + 1} exhausted. Rotating to next key.")
                 CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(GEMINI_API_KEYS)
-
                 continue
 
             return None, error
@@ -244,18 +256,23 @@ def transcribe_audio_bytes(
     if not audio_bytes:
         return "", "empty_audio"
 
-    # Gemini SDK v1.69.0 does not provide REST /audio/transcriptions endpoint.
     # Use speech_recognition library directly for reliable transcription.
-
     if speech_recognition is not None:
         try:
             recognizer = speech_recognition.Recognizer()
+            # Better sensitivity for short voice clips
+            recognizer.energy_threshold = 280
+            recognizer.dynamic_energy_threshold = True
             with speech_recognition.AudioFile(io.BytesIO(audio_bytes)) as source:
                 audio_data = recognizer.record(source)
-            text = recognizer.recognize_google(audio_data)
+            if len(audio_data.frame_data) == 0:
+                return "", "no_audio_data"
+            text = recognizer.recognize_google(audio_data, language="en-US")
             return text.strip(), None
         except speech_recognition.UnknownValueError:
             return "", "no_speech_detected"
+        except speech_recognition.RequestError as exc:
+            return "", f"speech_service_error: {exc}"
         except Exception as exc:
             return "", f"transcription_failed: {exc}"
 
@@ -341,7 +358,7 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
         return "No stored memory yet."
     if any(word in lowered for word in ("status", "telemetry", "metrics", "health")):
         return "Core telemetry is live. Connect `GEMINI_API_KEY` to unlock richer dialogue."
-    if lowered.startswith(("open ", "launch ", "start ", "search ", "note ", "task ")):
+    if lowered.startswith(("open ", "launch ", "start ", "search ", "note ", "remember ", "task ", "timer", "remind")):
         return "Command received. I can handle the local action."
     if lowered.startswith(("power up", "power down", "security mode", "camera status", "face status")):
         return "Command received. FRIDAY can handle that directly."
@@ -405,7 +422,4 @@ def generate_reply(
     if reply:
         return reply.strip(), None
 
-    return (
-    f"ERROR: {error}",
-    error,
-)
+    return fallback_reply(user_text, context=context), error
