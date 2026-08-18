@@ -50,6 +50,7 @@ const state = {
   allProtocols: {},
   audioCtx: null,
   voiceEngineReady: false,
+  emotion: "calm",
 };
 
 const QUICK_COMMANDS = [
@@ -69,20 +70,31 @@ const QUICK_COMMANDS = [
 ];
 
 const VOICE_PROFILES = {
-  friday:   { rate: 0.88, pitch: 1.18, volume: 1.0, label: "F.R.I.D.A.Y." },
-  cinematic:{ rate: 0.92, pitch: 1.12, volume: 1.0, label: "Cinematic" },
+  friday:   { rate: 0.92, pitch: 1.06, volume: 1.0, label: "F.R.I.D.A.Y." },
+  cinematic:{ rate: 0.90, pitch: 1.02, volume: 1.0, label: "Cinematic" },
   natural:  { rate: 1.00, pitch: 1.00, volume: 1.0, label: "Natural" },
   fast:     { rate: 1.15, pitch: 1.05, volume: 1.0, label: "Fast" },
   jarvis:   { rate: 0.85, pitch: 0.95, volume: 1.0, label: "J.A.R.V.I.S." },
 };
 
+const EMOTION_PROFILES = {
+  calm:      { label: "Calm", hint: "Steady and composed", mode: "idle", rate: 0.92, pitch: 1.00, volume: 1.0, color: "var(--cyan)" },
+  curious:   { label: "Curious", hint: "Searching for details", mode: "thinking", rate: 0.98, pitch: 1.04, volume: 1.0, color: "var(--cyan)" },
+  confident: { label: "Confident", hint: "Clear and assured", mode: "speaking", rate: 0.94, pitch: 0.98, volume: 1.0, color: "var(--accent)" },
+  worried:   { label: "Worried", hint: "A little concerned", mode: "thinking", rate: 0.99, pitch: 1.03, volume: 1.0, color: "var(--blue)" },
+  scared:    { label: "Scared", hint: "On edge", mode: "thinking", rate: 1.03, pitch: 1.10, volume: 1.0, color: "#ff9b9b" },
+  alert:     { label: "Alert", hint: "Something changed", mode: "listening", rate: 0.97, pitch: 1.02, volume: 1.0, color: "var(--cyan)" },
+  relieved:  { label: "Relieved", hint: "Pressure easing", mode: "idle", rate: 0.90, pitch: 0.98, volume: 1.0, color: "#88ffaa" },
+  apologetic:{ label: "Apologetic", hint: "Trying to make it right", mode: "speaking", rate: 0.90, pitch: 0.97, volume: 1.0, color: "#f5d59b" },
+  sad:       { label: "Sad", hint: "Quiet and low", mode: "thinking", rate: 0.84, pitch: 0.92, volume: 1.0, color: "#9db7ff" },
+  angry:     { label: "Angry", hint: "Tense and sharp", mode: "speaking", rate: 1.02, pitch: 0.96, volume: 1.0, color: "#ff6464" },
+};
+
 // Voice names that sound closest to Friday (Kerry Condon / Irish-British female)
 const VOICE_PRIORITY = [
-  "Samantha", "Victoria", "Karen", "Moira", "Tessa",
-  "Google UK English Female", "Microsoft Hazel",
-  "Google US English Female", "Microsoft Zira",
-  "Microsoft Catherine", "Google Translate English",
-  "en-GB", "en-AU", "en-IE", "en-US"
+  "Microsoft Hazel", "Google UK English Female", "Samantha", "Victoria", "Karen", "Moira", "Tessa",
+  "Microsoft Catherine", "Google US English Female", "Microsoft Zira",
+  "Google Translate English", "en-GB", "en-IE", "en-AU", "en-US"
 ];
 
 const els = {
@@ -127,8 +139,11 @@ const els = {
   dashboardProtocol: id("dashboardProtocol"),
   dashboardVoice: id("dashboardVoice"),
   dashboardWake: id("dashboardWake"),
+  dashboardEmotion: id("dashboardEmotion"),
+  dashboardEmotionHint: id("dashboardEmotionHint"),
   dashboardTime: id("dashboardTime"),
   dashboardWeather: id("dashboardWeather"),
+  emotionChip: id("emotionChip"),
   toastStack: id("toastStack"),
   waveCanvas: id("waveCanvas"),
   threeStage: id("threeStage"),
@@ -146,6 +161,36 @@ const MODEL_ORDER = [
 function id(name) { return document.getElementById(name); }
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+function inferEmotion(text, fallback = "calm") {
+  const value = String(text || "").toLowerCase();
+  const rules = [
+    ["scared", ["scared", "panic", "fright", "afraid", "threat", "danger", "unsafe", "alarm"]],
+    ["worried", ["worried", "concern", "uncertain", "not sure", "maybe", "risk", "problem", "issue", "warning"]],
+    ["apologetic", ["sorry", "apologize", "apologies", "my fault", "pardon"]],
+    ["relieved", ["good news", "resolved", "fixed", "complete", "safe", "all clear", "done"]],
+    ["confident", ["ready", "confirmed", "engaged", "complete", "excellent", "success", "certain"]],
+    ["angry", ["warning", "critical", "failure", "breach", "blocked", "denied", "hostile"]],
+    ["curious", ["what", "how", "why", "search", "explain", "investigate", "analyze"]],
+    ["alert", ["urgent", "immediately", "now", "watch", "listen", "attention"]],
+    ["sad", ["lost", "failed", "sorry", "degraded", "quiet", "down"]],
+  ];
+  for (const [emotion, keywords] of rules) {
+    if (keywords.some((keyword) => value.includes(keyword))) return emotion;
+  }
+  return fallback;
+}
+
+function setEmotion(emotionKey) {
+  const emotion = EMOTION_PROFILES[emotionKey] ? emotionKey : "calm";
+  state.emotion = emotion;
+  const profile = EMOTION_PROFILES[emotion];
+  document.body.setAttribute("data-friday-emotion", emotion);
+  document.documentElement.style.setProperty("--emotion-color", profile.color);
+  if (els.emotionChip) els.emotionChip.textContent = `Feeling ${profile.label.toLowerCase()}`;
+  if (els.dashboardEmotion) els.dashboardEmotion.textContent = profile.label;
+  if (els.dashboardEmotionHint) els.dashboardEmotionHint.textContent = profile.hint;
+}
 
 function computeRms(samples) {
   if (!samples || !samples.length) return 0;
@@ -253,12 +298,14 @@ function showToast(title, message, type = "info") {
 
 function showError(message) {
   showToast("Error", message, "error");
+  setEmotion("worried");
   const orb = document.querySelector(".orb-panel");
   if (orb) { orb.classList.add("error-shake"); setTimeout(() => orb.classList.remove("error-shake"), 600); }
 }
 
 function showSuccess(title, message) {
   showToast(title, message, "success");
+  setEmotion("confident");
 }
 
 function formatClock(date = new Date()) {
@@ -290,6 +337,7 @@ function memorySummary() { return currentState().memory_summary || "No stored me
 
 function updateChips() {
   const data = currentState();
+  const emotion = EMOTION_PROFILES[state.emotion] || EMOTION_PROFILES.calm;
   const cloud = data.cloud_ready ? "Cloud ready" : "Cloud offline";
   els.cloudChip.textContent = cloud;
   els.modelChip.textContent = data.model || "gpt-5";
@@ -308,6 +356,7 @@ function updateChips() {
   const notesCount = (data.notes || []).length;
   const tasksCount = (data.tasks || []).length;
   els.memoryChip.textContent = `${notesCount} notes`;
+  if (els.emotionChip) els.emotionChip.textContent = `Feeling ${emotion.label.toLowerCase()}`;
   if (els.powerChip) els.powerChip.textContent = `Power ${data.power_state || "online"}`;
   if (els.securityChip) els.securityChip.textContent = `Security ${data.security_mode || "normal"}`;
   els.timeChip.textContent = formatClock();
@@ -318,7 +367,7 @@ function updateChips() {
   const statusText = state.speaking ? "FRIDAY is speaking." : state.listening ? "FRIDAY is listening." : "FRIDAY online.";
   const summaryText = `${ownerTitle}: ${ownerName} • ${state.wakeArmed ? "Wake enabled" : "Direct capture"} • ${notesCount} notes`;
   els.statusLine.textContent = statusText;
-  els.subLine.textContent = memorySummary();
+  els.subLine.textContent = emotion.hint || memorySummary();
   if (els.dashboardStatus) els.dashboardStatus.textContent = statusText;
   if (els.dashboardSummary) els.dashboardSummary.textContent = summaryText;
   if (els.dashboardTelemetry) els.dashboardTelemetry.textContent = summarizeMetrics(state.metrics);
@@ -329,6 +378,8 @@ function updateChips() {
     els.dashboardVoice.textContent = `${voiceName} • ${state.listening ? "armed" : "ready"}`;
   }
   if (els.dashboardWake) els.dashboardWake.textContent = state.wakeArmed ? "Wake word armed" : "Direct capture";
+  if (els.dashboardEmotion) els.dashboardEmotion.textContent = emotion.label;
+  if (els.dashboardEmotionHint) els.dashboardEmotionHint.textContent = emotion.hint;
   if (els.dashboardTime) els.dashboardTime.textContent = formatClock();
   if (els.dashboardWeather) {
     const weatherSummary = state.weather
@@ -616,20 +667,31 @@ function finalizeSpeech(text, options) {
   window.speechSynthesis.cancel();
 
   const profile = VOICE_PROFILES[state.voiceProfile] || VOICE_PROFILES.friday;
+  const emotionKey = options?.emotionKey || inferEmotion(text, state.emotion);
+  setEmotion(emotionKey);
+  const emotionProfile = EMOTION_PROFILES[emotionKey] || EMOTION_PROFILES.calm;
   const utterance = new SpeechSynthesisUtterance(text);
 
-  utterance.rate = options?.mood?.rate ?? profile.rate;
-  utterance.pitch = options?.mood?.pitch ?? profile.pitch;
-  utterance.volume = options?.mood?.volume ?? profile.volume;
+  const speakerProfile = state.voiceProfile === "friday"
+    ? { rate: 0.92, pitch: 1.04, volume: 1.0 }
+    : profile;
+
+  utterance.rate = options?.mood?.rate ?? emotionProfile.rate ?? speakerProfile.rate;
+  utterance.pitch = options?.mood?.pitch ?? emotionProfile.pitch ?? speakerProfile.pitch;
+  utterance.volume = options?.mood?.volume ?? emotionProfile.volume ?? profile.volume;
 
   if (state.selectedVoice) utterance.voice = state.selectedVoice;
 
   // Add slight pauses for punctuation (cinematic cadence)
-  const enhancedText = text
-    .replace(/\./g, ". ")
-    .replace(/\,/g, ", ")
-    .replace(/\?/g, "? ")
-    .replace(/\!/g, "! ");
+  const enhancedText = String(text)
+    .replace(/\s+/g, " ")
+    .replace(/\.\s+/g, ".  ")
+    .replace(/,\s+/g, ", ")
+    .replace(/\?\s+/g, "?  ")
+    .replace(/!\s+/g, "!  ")
+    .replace(/\b(Boss|sir|ma'am)\b/gi, (match) => match.toLowerCase())
+    .trim();
+  utterance.text = enhancedText;
 
   utterance.onstart = () => {
     state.speaking = true;
@@ -1165,6 +1227,7 @@ async function sendMessage() {
   const text = els.commandInput.value.trim();
   if (!text) return;
   els.commandInput.value = "";
+  setEmotion(inferEmotion(text, "curious"));
   setFridayMode("thinking");
 
   try {
@@ -1175,7 +1238,7 @@ async function sendMessage() {
     updateChips();
     if (result.reply) {
       updateTranscript(result.reply, false);
-      finalizeSpeech(result.reply);
+      finalizeSpeech(result.reply, { emotionKey: inferEmotion(result.reply, "calm") });
     }
     setFridayMode("idle");
   } catch (err) {
@@ -1240,6 +1303,7 @@ function stopListening() {
 }
 
 async function handleVoiceInput(text) {
+  setEmotion(inferEmotion(text, "curious"));
   setFridayMode("thinking");
   try {
     const result = await apiPost("/api/chat", { text, source: "voice" });
@@ -1247,7 +1311,7 @@ async function handleVoiceInput(text) {
     renderLeftPanel();
     renderRightPanel();
     updateChips();
-    if (result.reply) finalizeSpeech(result.reply);
+    if (result.reply) finalizeSpeech(result.reply, { emotionKey: inferEmotion(result.reply, "calm") });
   } catch { showError("Voice command failed."); }
   setFridayMode(state.listening ? "listening" : "idle");
 }
@@ -1288,6 +1352,7 @@ function startClock() {
    ════════════════════════════════════════ */
 
 async function init() {
+  setEmotion(state.emotion);
   await syncState();
   await syncMetrics();
   initEventListeners();

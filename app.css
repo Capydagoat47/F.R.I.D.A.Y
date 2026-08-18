@@ -146,6 +146,41 @@ body[data-friday-mode="thinking"] {
   --energy: 0.5;
 }
 
+body[data-friday-emotion="scared"] .orb-shell,
+body[data-friday-emotion="worried"] .orb-shell {
+  box-shadow:
+    inset 0 0 120px rgba(84, 94, 180, 0.18),
+    0 0 120px rgba(255, 120, 120, 0.12);
+}
+
+body[data-friday-emotion="confident"] .orb-core,
+body[data-friday-emotion="relieved"] .orb-core {
+  filter: saturate(1.15) brightness(1.08);
+}
+
+body[data-friday-emotion="scared"] .orb-core {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 76px rgba(255, 120, 120, 0.55),
+    0 0 170px rgba(255, 120, 120, 0.18);
+}
+
+body[data-friday-emotion="worried"] .orb-title,
+body[data-friday-emotion="scared"] .orb-title {
+  color: #ffdbdb;
+  text-shadow: 0 0 28px rgba(255, 120, 120, 0.4), 0 0 56px rgba(var(--blue-rgb), 0.18);
+}
+
+body[data-friday-emotion="confident"] .orb-title {
+  color: #fff4da;
+  text-shadow: 0 0 28px rgba(var(--accent-rgb), 0.45), 0 0 56px rgba(var(--cyan-rgb), 0.15);
+}
+
+body[data-friday-emotion="relieved"] .orb-title {
+  color: #e8fff1;
+  text-shadow: 0 0 28px rgba(68, 255, 136, 0.28), 0 0 56px rgba(var(--cyan-rgb), 0.18);
+}
+
 @keyframes panel-glow-pulse {
   0%, 100% { box-shadow: 0 26px 84px rgba(0,0,0,0.48), 0 0 40px rgba(var(--cyan-rgb),0.25), inset 0 1px 0 rgba(255,255,255,0.08); }
   50% { box-shadow: 0 26px 84px rgba(0,0,0,0.48), 0 0 80px rgba(var(--cyan-rgb),0.45), inset 0 1px 0 rgba(255,255,255,0.08); }
@@ -386,6 +421,28 @@ body.ready .shell {
   background: var(--cyan);
   box-shadow: 0 0 14px rgba(var(--cyan-rgb), 0.8);
   animation: status-pulse 2.5s ease-in-out infinite;
+}
+
+#emotionChip {
+  border-color: rgba(var(--accent-rgb), 0.22);
+}
+
+#emotionChip::before {
+  background: linear-gradient(180deg, var(--accent), var(--cyan));
+  box-shadow: 0 0 14px rgba(var(--accent-rgb), 0.8);
+}
+
+body[data-friday-emotion="scared"] #emotionChip::before {
+  background: linear-gradient(180deg, #ff9b9b, #ff6464);
+}
+
+body[data-friday-emotion="worried"] #emotionChip::before {
+  background: linear-gradient(180deg, #8ca4ff, #5b6eff);
+}
+
+body[data-friday-emotion="confident"] #emotionChip::before,
+body[data-friday-emotion="relieved"] #emotionChip::before {
+  background: linear-gradient(180deg, #f5d59b, #88ffaa);
 }
 
 .status-chip.error::before {
@@ -2013,6 +2070,28 @@ body::after {
 .micro-body {
   color: rgba(247, 250, 255, 0.92);
   line-height: 1.65;
+}
+
+#memorySummary {
+  max-height: 8.5rem;
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.55) rgba(255, 255, 255, 0.04);
+}
+
+#memorySummary::-webkit-scrollbar {
+  width: 8px;
+}
+
+#memorySummary::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+#memorySummary::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.7), rgba(var(--cyan-rgb), 0.55));
+  border-radius: 999px;
 }
 
 .dock {
