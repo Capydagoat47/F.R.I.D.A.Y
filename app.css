@@ -2207,3 +2207,202 @@ body::after {
     border-radius: 24px;
   }
 }
+
+/* =========================================
+   FINAL LAYOUT OVERRIDES
+   ========================================= */
+
+.shell {
+  max-width: 1720px;
+  margin: 0 auto;
+}
+
+.hud-grid {
+  grid-template-columns: clamp(290px, 18vw, 360px) minmax(0, 1fr) clamp(310px, 19vw, 380px);
+  gap: 18px;
+}
+
+.rail {
+  overflow: hidden;
+}
+
+.rail .panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(12, 19, 31, 0.96), rgba(8, 13, 21, 0.94));
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+.tab-strip {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.tab {
+  min-height: 58px;
+  padding: 0.82rem 0.9rem;
+  white-space: normal;
+  line-height: 1.08;
+}
+
+.panel-scroll {
+  padding: 0 16px 20px;
+}
+
+.center-grid {
+  gap: 14px;
+}
+
+.micro-panel {
+  min-height: 154px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+
+.micro-body {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 8px;
+}
+
+#memorySummary {
+  max-height: clamp(8rem, 13vh, 11rem);
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.55) rgba(255, 255, 255, 0.04);
+}
+
+#memorySummary::-webkit-scrollbar {
+  width: 8px;
+}
+
+#memorySummary::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+#memorySummary::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.7), rgba(var(--cyan-rgb), 0.55));
+  border-radius: 999px;
+}
+
+.dashboard-strip {
+  gap: 14px;
+}
+
+.dashboard-card {
+  min-height: 132px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.5) rgba(255, 255, 255, 0.04);
+}
+
+.dashboard-card strong {
+  margin-top: 4px;
+}
+
+.dashboard-card small {
+  margin-top: 0;
+}
+
+.dashboard-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dashboard-card::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+.dashboard-card::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.6), rgba(var(--cyan-rgb), 0.45));
+  border-radius: 999px;
+}
+
+@media (max-width: 780px) {
+  .shell {
+    max-width: none;
+    padding: 12px;
+  }
+
+  .hud-grid {
+    gap: 12px;
+  }
+
+  .tab-strip,
+  .dashboard-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tab {
+    min-height: 52px;
+    font-size: 0.72rem;
+  }
+
+  .dashboard-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card {
+    min-height: 118px;
+  }
+
+  .micro-panel {
+    min-height: 128px;
+  }
+
+  #memorySummary,
+  .micro-body {
+    max-height: 8rem;
+  }
+
+  .panel {
+    border-radius: 20px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .shell {
+    max-width: 1920px;
+    padding: 30px;
+    gap: 20px;
+  }
+
+  .hud-grid {
+    grid-template-columns: clamp(360px, 18vw, 440px) minmax(0, 1fr) clamp(360px, 18vw, 440px);
+    gap: 22px;
+  }
+
+  .luxury-title {
+    font-size: clamp(2.6rem, 4vw, 5rem);
+  }
+
+  .luxury-copy {
+    font-size: 1.08rem;
+  }
+
+  .tab {
+    min-height: 64px;
+    font-size: 0.9rem;
+  }
+
+  .micro-panel,
+  .dashboard-card {
+    min-height: 172px;
+  }
+
+  #memorySummary,
+  .micro-body {
+    max-height: clamp(9rem, 12vh, 13rem);
+  }
+
+  .orb-shell {
+    min-height: 680px;
+  }
+}
