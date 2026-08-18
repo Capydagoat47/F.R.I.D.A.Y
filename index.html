@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#02060d">
+  <meta name="description" content="FRIDAY cinematic HUD assistant with voice, wake word, memory, and safe system commands.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FRIDAY">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FRIDAY</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/friday-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/friday-icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+  <div class="noise"></div>
+
+  <div class="boot" id="boot">
+    <div class="boot-panel">
+      <div class="boot-eyebrow">FRIDAY CORE // v2.0</div>
+      <div class="boot-title">SYSTEM INITIALIZATION</div>
+      <div class="boot-ring"></div>
+      <div class="boot-log" id="bootLog"></div>
+      <div class="boot-bar"><span id="bootBar"></span></div>
+      <div class="boot-foot">
+        <span class="dot"></span>
+        <span>Hey Friday | Boss profile loaded | Wake word armed</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell" id="shell">
+    <header class="luxury-banner">
+      <div class="luxury-mark">
+        <div class="luxury-kicker">Private Executive Interface</div>
+        <div class="luxury-title">FRIDAY</div>
+        <div class="luxury-copy">Cinematic intelligence cockpit for voice, memory, protocols, and safe command execution.</div>
+      </div>
+      <div class="luxury-side">
+        <div class="luxury-readout">
+          <span class="luxury-readout-label">Mission Briefing</span>
+          <strong id="dashboardStatus">FRIDAY online.</strong>
+          <small id="dashboardSummary">Wake word armed. Waiting for a command.</small>
+        </div>
+        <div class="luxury-pills">
+          <span>Ambient orchestration</span>
+          <span>Secure by design</span>
+          <span>Model-aware control</span>
+        </div>
+      </div>
+    </header>
+
+    <section class="dashboard-strip">
+      <article class="dashboard-card">
+        <span>Telemetry</span>
+        <strong id="dashboardTelemetry">Telemetry warming up.</strong>
+        <small id="dashboardModel">Model unknown</small>
+      </article>
+      <article class="dashboard-card">
+        <span>Memory</span>
+        <strong id="dashboardMemory">No stored memory yet.</strong>
+        <small id="dashboardProtocol">Core Protocol</small>
+      </article>
+      <article class="dashboard-card">
+        <span>Voice</span>
+        <strong id="dashboardVoice">Browser voice ready.</strong>
+        <small id="dashboardWake">Wake word armed</small>
+      </article>
+      <article class="dashboard-card">
+        <span>Clock</span>
+        <strong id="dashboardTime">--:--</strong>
+        <small id="dashboardWeather">Weather unavailable</small>
+      </article>
+    </section>
+
+    <div class="hud-grid">
+      <aside class="panel rail">
+        <div class="panel-head">
+          <span>FRIDAY // MEMORY</span>
+          <span class="head-chip" id="cloudChip">Offline</span>
+        </div>
+        <div class="tab-strip" id="leftTabs">
+          <button class="tab active" type="button" data-view="conversation">Conversation</button>
+          <button class="tab" type="button" data-view="commands">Commands</button>
+          <button class="tab" type="button" data-view="notes">Notes</button>
+          <button class="tab" type="button" data-view="tasks">Tasks</button>
+          <button class="tab" type="button" data-view="history">History</button>
+        </div>
+        <div class="panel-scroll" id="leftPanel"></div>
+      </aside>
+
+      <main class="center-stage">
+        <section class="panel orb-panel">
+          <div class="panel-head panel-head-center">
+            <span>FRIDAY // CORE</span>
+            <span class="head-chip" id="modelChip">Gemini 2.5 Flash</span>
+            <span class="head-chip" id="protocolChip">Core Protocol</span>
+            <span class="head-chip" id="wakeChip">Hey Friday</span>
+            <span class="head-chip" id="ownerChip">Boss: Kenan Novruzov</span>
+          </div>
+          <div class="status-strip">
+            <span class="status-chip" id="voiceChip">Voice idle</span>
+            <span class="status-chip" id="listenChip">Wake word armed</span>
+            <span class="status-chip" id="telemetryChip">Telemetry live</span>
+            <span class="status-chip" id="memoryChip">Memory ready</span>
+            <span class="status-chip" id="powerChip">Power online</span>
+            <span class="status-chip" id="securityChip">Security normal</span>
+          </div>
+          <div class="orb-shell">
+            <div class="orb-backlight"></div>
+            <div id="threeStage" class="three-stage"></div>
+            <canvas id="waveCanvas" class="wave-canvas"></canvas>
+            <div class="orb-grid"></div>
+            <div class="orb-ring ring-a"></div>
+            <div class="orb-ring ring-b"></div>
+            <div class="orb-ring ring-c"></div>
+            <div class="orb-core"></div>
+            <div class="orb-scan"></div>
+            <div class="orb-halo"></div>
+            <div class="orb-caption">
+              <div class="orb-title" id="statusLine">FRIDAY online.</div>
+              <div class="orb-sub" id="subLine">Wake word armed. Waiting for a command.</div>
+              <div class="orb-transcript" id="transcriptLine">Transcript will appear here.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="center-grid">
+          <article class="panel micro-panel">
+            <div class="micro-head">Memory Summary</div>
+            <div class="micro-body" id="memorySummary">No stored memory yet.</div>
+          </article>
+          <article class="panel micro-panel">
+            <div class="micro-head">Telemetry Snapshot</div>
+            <div class="micro-body" id="metricsSummary">Telemetry is warming up.</div>
+          </article>
+          <article class="panel micro-panel">
+            <div class="micro-head">Voice Engine</div>
+            <div class="micro-body" id="voiceSummary">Browser voice ready.</div>
+          </article>
+          <article class="panel micro-panel">
+            <div class="micro-head">Quick Actions</div>
+            <div class="micro-body" id="quickSummary">Natural commands, planning, screenshots, downloads, power, security, and contact control.</div>
+          </article>
+        </section>
+      </main>
+
+      <aside class="panel rail">
+        <div class="panel-head">
+          <span>SYSTEM TELEMETRY</span>
+          <span class="head-chip" id="timeChip">--:--</span>
+        </div>
+        <div class="panel-scroll" id="rightPanel"></div>
+      </aside>
+    </div>
+
+    <footer class="panel dock">
+      <div class="dock-command">
+        <input id="commandInput" type="text" autocomplete="off" placeholder="Speak or type to FRIDAY...">
+        <button id="sendBtn" type="button">Transmit</button>
+      </div>
+      <div class="dock-actions">
+        <button id="voiceBtn">Voice</button>
+        <button id="voiceProfileBtn">Voice</button>
+        <button id="protocolBtn">Protocol</button>
+        <button id="wakeBtn">Wake</button>
+        <button id="ambientBtn">Ambient</button>
+        <button id="fullBtn">Fullscreen</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+
+  <div class="protocol-menu hidden" id="protocolMenu">
+    <div class="protocol-title">PROTOCOL SELECTION</div>
+    <button data-protocol="core">Core</button>
+    <button data-protocol="forge">Forge</button>
+    <button data-protocol="atlas">Atlas</button>
+    <button data-protocol="barn_door">Barn Door</button>
+    <button data-protocol="vector">Vector</button>
+    <button data-protocol="vision">Vision</button>
+    <button data-protocol="brain">Brain</button>
+    <button data-protocol="titan">Titan</button>
+  </div>
+
+  <div class="voice-profile-menu hidden" id="voiceProfileMenu">
+    <div class="protocol-title">VOICE PROFILE</div>
+    <button data-profile="friday">F.R.I.D.A.Y.</button>
+    <button data-profile="cinematic">Cinematic</button>
+    <button data-profile="natural">Natural</button>
+    <button data-profile="fast">Fast</button>
+    <button data-profile="jarvis">J.A.R.V.I.S.</button>
+  </div>
+</body>
+</html>

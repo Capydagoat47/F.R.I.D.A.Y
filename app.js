@@ -119,6 +119,16 @@ const els = {
   metricsSummary: id("metricsSummary"),
   voiceSummary: id("voiceSummary"),
   quickSummary: id("quickSummary"),
+  dashboardStatus: id("dashboardStatus"),
+  dashboardSummary: id("dashboardSummary"),
+  dashboardTelemetry: id("dashboardTelemetry"),
+  dashboardModel: id("dashboardModel"),
+  dashboardMemory: id("dashboardMemory"),
+  dashboardProtocol: id("dashboardProtocol"),
+  dashboardVoice: id("dashboardVoice"),
+  dashboardWake: id("dashboardWake"),
+  dashboardTime: id("dashboardTime"),
+  dashboardWeather: id("dashboardWeather"),
   toastStack: id("toastStack"),
   waveCanvas: id("waveCanvas"),
   threeStage: id("threeStage"),
@@ -283,9 +293,11 @@ function updateChips() {
   const cloud = data.cloud_ready ? "Cloud ready" : "Cloud offline";
   els.cloudChip.textContent = cloud;
   els.modelChip.textContent = data.model || "gpt-5";
+  if (els.dashboardModel) els.dashboardModel.textContent = data.model || "gpt-5";
   const proto = data.protocol || state.allProtocols[state.currentProtocol];
   const protoName = proto?.name || state.currentProtocol || "Core";
   if (els.protocolChip) els.protocolChip.textContent = `${protoName} Protocol`;
+  if (els.dashboardProtocol) els.dashboardProtocol.textContent = `${protoName} Protocol`;
   els.wakeChip.textContent = state.wakeArmed ? "FRIDAY" : "Direct";
   const ownerName = data.owner_name || data.owner_profile?.name || "Kenan Novruzov";
   const ownerTitle = data.owner_title || data.owner_profile?.title || "Boss";
@@ -293,16 +305,37 @@ function updateChips() {
   els.voiceChip.textContent = state.speaking ? "Speaking" : state.listening ? "Listening" : "Voice idle";
   els.listenChip.textContent = state.wakeArmed ? "Wake word armed" : "Direct capture";
   els.telemetryChip.textContent = "Telemetry live";
-  els.memoryChip.textContent = `${(data.notes || []).length} notes`;
+  const notesCount = (data.notes || []).length;
+  const tasksCount = (data.tasks || []).length;
+  els.memoryChip.textContent = `${notesCount} notes`;
   if (els.powerChip) els.powerChip.textContent = `Power ${data.power_state || "online"}`;
   if (els.securityChip) els.securityChip.textContent = `Security ${data.security_mode || "normal"}`;
   els.timeChip.textContent = formatClock();
   els.memorySummary.textContent = memorySummary();
   els.metricsSummary.textContent = summarizeMetrics(state.metrics);
   els.voiceSummary.textContent = voiceSummaryText();
-  els.quickSummary.textContent = "Natural-language requests, safe web links, web search, timers, memory, telemetry, power states, and simulated HUD security.";
-  els.statusLine.textContent = state.speaking ? "FRIDAY is speaking." : state.listening ? "FRIDAY is listening." : "FRIDAY online.";
+  els.quickSummary.textContent = "Private command center for voice, memory, telemetry, web search, timers, screenshots, and safe device actions.";
+  const statusText = state.speaking ? "FRIDAY is speaking." : state.listening ? "FRIDAY is listening." : "FRIDAY online.";
+  const summaryText = `${ownerTitle}: ${ownerName} • ${state.wakeArmed ? "Wake enabled" : "Direct capture"} • ${notesCount} notes`;
+  els.statusLine.textContent = statusText;
   els.subLine.textContent = memorySummary();
+  if (els.dashboardStatus) els.dashboardStatus.textContent = statusText;
+  if (els.dashboardSummary) els.dashboardSummary.textContent = summaryText;
+  if (els.dashboardTelemetry) els.dashboardTelemetry.textContent = summarizeMetrics(state.metrics);
+  if (els.dashboardMemory) els.dashboardMemory.textContent = `${notesCount} notes • ${tasksCount} tasks`;
+  if (els.dashboardVoice) {
+    const profile = VOICE_PROFILES[state.voiceProfile] || VOICE_PROFILES.friday;
+    const voiceName = state.selectedVoice ? state.selectedVoice.name : profile.label;
+    els.dashboardVoice.textContent = `${voiceName} • ${state.listening ? "armed" : "ready"}`;
+  }
+  if (els.dashboardWake) els.dashboardWake.textContent = state.wakeArmed ? "Wake word armed" : "Direct capture";
+  if (els.dashboardTime) els.dashboardTime.textContent = formatClock();
+  if (els.dashboardWeather) {
+    const weatherSummary = state.weather
+      ? (state.weather.condition || state.weather.summary || (state.weather.temperature !== undefined ? `${formatNumber(state.weather.temperature)}°` : "Weather online"))
+      : "Weather unavailable";
+    els.dashboardWeather.textContent = weatherSummary;
+  }
 }
 
 function summarizeMetrics(metrics) {
@@ -777,7 +810,7 @@ function renderLeftPanel() {
             <div class="message-text">${escapeHtml(item.text)}</div>
             <div class="message-time">${escapeHtml(new Date(item.created_at).toLocaleString())}</div>
           </article>
-        `).join("") : '<div class="empty-state">No notes stored yet. Use the command bar to add one.</div>'}
+        `).join("") : '<div class="empty-state">No notes stored yet. Ask FRIDAY to remember something and it will live here.</div>'}
       </div>
     `;
     return;
@@ -793,7 +826,7 @@ function renderLeftPanel() {
             <span class="message-text">${escapeHtml(item.text)}</span>
             <span class="message-time">${escapeHtml(new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</span>
           </label>
-        `).join("") : '<div class="empty-state">No tasks active. Say "task ..." to create one.</div>'}
+        `).join("") : '<div class="empty-state">No tasks active right now. Say "task ..." to create one and FRIDAY will track it.</div>'}
       </div>
     `;
     return;
@@ -808,7 +841,7 @@ function renderLeftPanel() {
             <strong>${escapeHtml(item.text)}</strong>
             <span class="meta-row">${escapeHtml(eventLabel(item))}</span>
           </article>
-        `).join("") : '<div class="empty-state">No events recorded yet.</div>'}
+        `).join("") : '<div class="empty-state">No events recorded yet. FRIDAY will surface updates here as they happen.</div>'}
       </div>
     `;
     return;
@@ -823,7 +856,7 @@ function renderLeftPanel() {
           <div class="message-text">${escapeHtml(item.text)}</div>
           <div class="message-time">${escapeHtml(new Date(item.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</div>
         </article>
-      `).join("") : '<div class="empty-state">Say something to begin the conversation.</div>'}
+      `).join("") : '<div class="empty-state">The channel is clear. Say something and FRIDAY will answer here.</div>'}
     </div>
   `;
   requestAnimationFrame(() => { els.leftPanel.scrollTop = els.leftPanel.scrollHeight; });
