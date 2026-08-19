@@ -5,10 +5,10 @@
   --bg-2: #050b17;
   --panel: rgba(7, 14, 24, 0.72);
   --panel-strong: rgba(9, 20, 34, 0.9);
-  --cyan: #59e6ff;
-  --cyan-rgb: 89, 230, 255;
-  --blue: #378dff;
-  --blue-rgb: 55, 141, 255;
+  --cyan: #34f0ff;
+  --cyan-rgb: 52, 240, 255;
+  --blue: #2f7bff;
+  --blue-rgb: 47, 123, 255;
   --line: rgba(var(--cyan-rgb), 0.22);
   --line-strong: rgba(var(--cyan-rgb), 0.42);
   --cyan-soft: rgba(var(--cyan-rgb), 0.18);
@@ -1671,11 +1671,12 @@ body[data-friday-mode="thinking"] .orb-title {
 
 /* Protocol Chip */
 #protocolChip {
-  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.2), rgba(var(--blue-rgb), 0.15));
-  border-color: rgba(var(--cyan-rgb), 0.5);
+  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.3), rgba(var(--blue-rgb), 0.22));
+  border-color: rgba(var(--cyan-rgb), 0.7);
   font-weight: 700;
   letter-spacing: 0.1em;
   animation: status-pulse 3s ease-in-out infinite;
+  box-shadow: 0 0 22px rgba(var(--cyan-rgb), 0.25), 0 0 48px rgba(var(--blue-rgb), 0.12);
 }
 
 /* Protocol Menu - ensure above everything */
@@ -1685,9 +1686,9 @@ body[data-friday-mode="thinking"] .orb-title {
 
 /* Protocol button active state */
 #protocolBtn.active {
-  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.3), rgba(var(--blue-rgb), 0.2));
+  background: linear-gradient(135deg, rgba(var(--cyan-rgb), 0.42), rgba(var(--blue-rgb), 0.28));
   border-color: var(--cyan);
-  box-shadow: var(--glow-cyan);
+  box-shadow: 0 0 16px rgba(var(--cyan-rgb), 0.55), 0 0 38px rgba(var(--blue-rgb), 0.22), var(--glow-cyan);
 }
 
 /* Scanlines/vignette/noise should NOT block clicks */
@@ -1715,20 +1716,20 @@ body[data-friday-mode="thinking"] .orb-title {
 }
 
 /* Enhanced protocol menu items with color indicators */
-.protocol-menu button[data-protocol="core"] { border-left: 3px solid #59E6FF; }
-.protocol-menu button[data-protocol="forge"] { border-left: 3px solid #FF9B32; }
-.protocol-menu button[data-protocol="atlas"] { border-left: 3px solid #9D6CFF; }
-.protocol-menu button[data-protocol="barn_door"] { border-left: 3px solid #FF4040; }
-.protocol-menu button[data-protocol="vector"] { border-left: 3px solid #4CFF4C; }
-.protocol-menu button[data-protocol="vision"] { border-left: 3px solid #C26CFF; }
-.protocol-menu button[data-protocol="brain"] { border-left: 3px solid #7EEFFF; }
-.protocol-menu button[data-protocol="titan"] { border-left: 3px solid #FFD54A; }
+.protocol-menu button[data-protocol="core"] { border-left: 3px solid #34F0FF; }
+.protocol-menu button[data-protocol="forge"] { border-left: 3px solid #FFB347; }
+.protocol-menu button[data-protocol="atlas"] { border-left: 3px solid #B67BFF; }
+.protocol-menu button[data-protocol="barn_door"] { border-left: 3px solid #FF5252; }
+.protocol-menu button[data-protocol="vector"] { border-left: 3px solid #67FF67; }
+.protocol-menu button[data-protocol="vision"] { border-left: 3px solid #D06CFF; }
+.protocol-menu button[data-protocol="brain"] { border-left: 3px solid #92F5FF; }
+.protocol-menu button[data-protocol="titan"] { border-left: 3px solid #FFE76C; }
 
 /* Active protocol highlight in menu */
 .protocol-menu button.active-protocol {
-  background: rgba(var(--cyan-rgb), 0.25) !important;
+  background: rgba(var(--cyan-rgb), 0.34) !important;
   border-color: var(--cyan) !important;
-  box-shadow: 0 0 20px rgba(var(--cyan-rgb), 0.3);
+  box-shadow: 0 0 24px rgba(var(--cyan-rgb), 0.38), 0 0 54px rgba(var(--blue-rgb), 0.15);
 }
 
 
@@ -2155,8 +2156,8 @@ body::after {
 }
 
 .protocol-title {
-  color: var(--accent);
-  text-shadow: 0 0 15px rgba(var(--accent-rgb), 0.2);
+  color: var(--cyan);
+  text-shadow: 0 0 15px rgba(var(--cyan-rgb), 0.38), 0 0 28px rgba(var(--blue-rgb), 0.14);
 }
 
 .protocol-menu button,
@@ -2167,8 +2168,9 @@ body::after {
 
 .protocol-menu button:hover,
 .voice-profile-menu button:hover {
-  border-color: rgba(var(--accent-rgb), 0.3);
-  background: rgba(var(--cyan-rgb), 0.12);
+  border-color: rgba(var(--cyan-rgb), 0.45);
+  background: rgba(var(--cyan-rgb), 0.2);
+  box-shadow: 0 0 22px rgba(var(--cyan-rgb), 0.18);
 }
 
 @media (max-width: 1360px) {

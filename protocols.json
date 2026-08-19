@@ -3,9 +3,9 @@
     "name": "Core",
     "description": "Default assistant mode.",
     "colors": {
-      "primary": "#59E6FF",
-      "secondary": "#0AA8FF",
-      "glow": "#7EEFFF"
+      "primary": "#34F0FF",
+      "secondary": "#2F7BFF",
+      "glow": "#98FBFF"
     },
     "status": "All systems nominal.",
     "voice": "Core protocol online, Boss.",
@@ -24,9 +24,9 @@
     "name": "Forge",
     "description": "Engineering and software development.",
     "colors": {
-      "primary": "#FF9B32",
-      "secondary": "#FF6A00",
-      "glow": "#FFC15E"
+      "primary": "#FFB347",
+      "secondary": "#FF7A18",
+      "glow": "#FFD47A"
     },
     "status": "Development systems ready.",
     "voice": "Forge protocol engaged, Boss.",
@@ -45,9 +45,9 @@
     "name": "Atlas",
     "description": "Research and advanced analysis.",
     "colors": {
-      "primary": "#9D6CFF",
-      "secondary": "#6E44FF",
-      "glow": "#C5A3FF"
+      "primary": "#B67BFF",
+      "secondary": "#7C46FF",
+      "glow": "#D7BCFF"
     },
     "status": "Research systems online.",
     "voice": "Atlas protocol online.",
@@ -66,9 +66,9 @@
     "name": "Barn Door",
     "description": "Security and system protection.",
     "colors": {
-      "primary": "#FF4040",
-      "secondary": "#B80000",
-      "glow": "#FF8080"
+      "primary": "#FF5252",
+      "secondary": "#FF1F4D",
+      "glow": "#FF9B9B"
     },
     "status": "Security systems prioritized.",
     "voice": "Barn Door protocol active.",
@@ -87,9 +87,9 @@
     "name": "Vector",
     "description": "Automation and task execution.",
     "colors": {
-      "primary": "#4CFF4C",
-      "secondary": "#00C853",
-      "glow": "#A5FF9A"
+      "primary": "#67FF67",
+      "secondary": "#00E676",
+      "glow": "#B8FFB8"
     },
     "status": "Automation systems online.",
     "voice": "Vector protocol engaged.",
@@ -108,9 +108,9 @@
     "name": "Vision",
     "description": "Camera and image intelligence.",
     "colors": {
-      "primary": "#C26CFF",
-      "secondary": "#8E24AA",
-      "glow": "#E2B8FF"
+      "primary": "#D06CFF",
+      "secondary": "#A53DFF",
+      "glow": "#E9C3FF"
     },
     "status": "Visual systems calibrated.",
     "voice": "Vision protocol active.",
@@ -129,9 +129,9 @@
     "name": "Brain",
     "description": "Memory and long-term context.",
     "colors": {
-      "primary": "#7EEFFF",
-      "secondary": "#FFFFFF",
-      "glow": "#CFFFFF"
+      "primary": "#92F5FF",
+      "secondary": "#EAFBFF",
+      "glow": "#D6FDFF"
     },
     "status": "Memory synchronized.",
     "voice": "Brain protocol online.",
@@ -150,9 +150,9 @@
     "name": "Titan",
     "description": "Maximum reasoning and planning.",
     "colors": {
-      "primary": "#FFD54A",
-      "secondary": "#FFB300",
-      "glow": "#FFF3A1"
+      "primary": "#FFE76C",
+      "secondary": "#FFBF1F",
+      "glow": "#FFF2AE"
     },
     "status": "Maximum reasoning enabled.",
     "voice": "Titan protocol online.",
@@ -171,9 +171,9 @@
     "name": "Emergency",
     "description": "Automatic critical response protocol.",
     "colors": {
-      "primary": "#FF0000",
-      "secondary": "#800080",
-      "glow": "#FF4D4D"
+      "primary": "#FF3030",
+      "secondary": "#FF3D8D",
+      "glow": "#FF9090"
     },
     "status": "Emergency protocol active.",
     "voice": "Warning, Boss. Emergency protocol activated.",
