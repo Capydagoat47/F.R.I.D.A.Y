@@ -1016,13 +1016,7 @@ body[data-friday-mode="thinking"] .orb-title {
 
 /* ─── DOCK ─── */
 .dock {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
-  padding: 16px 18px;
-  align-items: center;
-  animation: panelSlideIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
-  opacity: 0;
+  display: none;
 }
 
 .dock-command {

@@ -1014,8 +1014,14 @@ function drawWaveform() {
   ctx.scale(dpr, dpr);
   const width = rect.width, height = rect.height, centerY = height / 2;
   let time = 0;
+  let lastFrame = 0;
 
-  function draw() {
+  function draw(now = 0) {
+    if (now - lastFrame < 33) {
+      requestAnimationFrame(draw);
+      return;
+    }
+    lastFrame = now;
     ctx.clearRect(0, 0, width, height);
     const energy = state.energy;
     const rgb = getComputedStyle(document.documentElement).getPropertyValue("--cyan-rgb").trim() || "89, 230, 255";
@@ -1024,7 +1030,7 @@ function drawWaveform() {
       ctx.beginPath();
       ctx.strokeStyle = `rgba(${rgb}, ${0.3 + energy * 0.4})`;
       ctx.lineWidth = 2;
-      for (let x = 0; x < width; x += 2) {
+      for (let x = 0; x < width; x += 3) {
         const nx = x / width;
         const wave1 = Math.sin(nx * Math.PI * 8 + time) * (energy * 20);
         const wave2 = Math.sin(nx * Math.PI * 14 + time * 1.5) * (energy * 12);
@@ -1037,7 +1043,7 @@ function drawWaveform() {
       ctx.beginPath();
       ctx.strokeStyle = `rgba(${rgb}, ${0.15 + energy * 0.2})`;
       ctx.lineWidth = 1.5;
-      for (let x = 0; x < width; x += 2) {
+      for (let x = 0; x < width; x += 3) {
         const nx = x / width;
         const wave1 = Math.sin(nx * Math.PI * 6 + time + 1) * (energy * 15);
         const wave2 = Math.sin(nx * Math.PI * 10 + time * 1.2) * (energy * 10);
@@ -1086,9 +1092,6 @@ async function runBootSequence() {
   document.body.classList.add("ready");
   state.bootComplete = true;
 
-  initParticles();
-  initMouseParallax();
-  setTimeout(initMagneticButtons, 500);
   drawWaveform();
 
   // Init voice engine after boot (needs user interaction, but we'll prepare it)
