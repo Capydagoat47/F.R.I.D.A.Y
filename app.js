@@ -1269,13 +1269,16 @@ async function toggleVoice() {
 }
 
 function startListening() {
-  state.listening = true;
-  setFridayMode("listening");
-  updateChips();
-  showToast("Voice", "Listening... Speak now.");
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    showError("Voice recognition is not supported in this browser.");
+    state.listening = false;
+    setFridayMode("idle");
+    updateChips();
+    return;
+  }
 
-  if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  try {
     state.recognition = new SpeechRecognition();
     state.recognition.continuous = true;
     state.recognition.interimResults = true;
@@ -1290,11 +1293,28 @@ function startListening() {
       if (interim) updateTranscript(interim, true);
       if (final) { updateTranscript(final, false); handleVoiceInput(final); }
     };
-    state.recognition.onerror = () => { stopListening(); };
-    state.recognition.onend = () => {
-      if (state.listening) { try { state.recognition.start(); } catch { stopListening(); } }
+    state.recognition.onerror = (e) => {
+      if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
+        showError(`Voice error: ${e.error}`);
+      }
+      stopListening();
     };
-    try { state.recognition.start(); } catch { stopListening(); }
+    state.recognition.onend = () => {
+      if (state.listening) {
+        try { state.recognition.start(); } catch { stopListening(); }
+      }
+    };
+    state.recognition.start();
+    state.listening = true;
+    setFridayMode("listening");
+    updateChips();
+    showToast("Voice", "Listening... Speak now.");
+  } catch (err) {
+    state.listening = false;
+    state.recognition = null;
+    setFridayMode("idle");
+    updateChips();
+    showError(err instanceof Error ? err.message : "Failed to start voice recognition.");
   }
 }
 

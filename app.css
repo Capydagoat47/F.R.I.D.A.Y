@@ -1016,25 +1016,31 @@ body[data-friday-mode="thinking"] .orb-title {
 
 /* ─── DOCK ─── */
 .dock {
-  display: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px 18px;
+  align-items: center;
+  animation: panelSlideIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+  opacity: 0;
 }
 
 .dock-command {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 12px;
 }
 
 .dock-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
+  display: none;
 }
 
-.dock-actions button,
 .dock-command button {
   white-space: nowrap;
+}
+
+#voiceBtn {
+  min-width: 88px;
 }
 
 /* ─── TOASTS ─── */
@@ -1606,13 +1612,10 @@ body[data-friday-mode="thinking"] .orb-title {
     padding: 14px;
     border-radius: 24px;
   }
-  .dock-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    gap: 8px;
+  .dock-command {
+    grid-template-columns: 1fr auto auto;
   }
-  .dock-actions button, .dock-command button, .dock-command input {
+  .dock-command button, .dock-command input {
     min-height: 52px;
     width: 100%;
     font-size: 0.7rem;
