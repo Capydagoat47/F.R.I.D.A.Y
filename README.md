@@ -30,6 +30,8 @@ python server.py
 
 Click `Voice` once to grant microphone access. With wake mode armed, say `FRIDAY` or `Hey Friday` followed by a command. FRIDAY auto-restarts browser speech recognition when it stops and falls back to server transcription when browser recognition is unavailable.
 
+If the browser speech engine is flaky, FRIDAY now records your microphone input locally, sends it to `/api/transcribe`, and uses that transcript to answer your command.
+
 ## Safe Commands
 
 Supported local command classes:

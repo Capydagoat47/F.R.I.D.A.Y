@@ -28,6 +28,7 @@ const state = {
   recordingStartedAt: 0,
   recordingLastVoiceAt: 0,
   recordingHeardVoice: false,
+  voiceFallbackSilenceTimer: null,
   ambientContext: null,
   ambientNodes: [],
   weather: null,
@@ -218,6 +219,186 @@ function concatFloat32Arrays(chunks) {
   let offset = 0;
   for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.length; }
   return output;
+}
+
+function stopVoiceFallbackTimer() {
+  if (state.voiceFallbackSilenceTimer) {
+    clearInterval(state.voiceFallbackSilenceTimer);
+    state.voiceFallbackSilenceTimer = null;
+  }
+}
+
+function cleanupVoiceCaptureResources() {
+  stopVoiceFallbackTimer();
+  if (state.micProcessor) {
+    try { state.micProcessor.disconnect(); } catch {}
+    state.micProcessor = null;
+  }
+  if (state.micSource) {
+    try { state.micSource.disconnect(); } catch {}
+    state.micSource = null;
+  }
+  if (state.micAnalyser) {
+    try { state.micAnalyser.disconnect(); } catch {}
+    state.micAnalyser = null;
+  }
+  if (state.micStream) {
+    state.micStream.getTracks().forEach((track) => {
+      try { track.stop(); } catch {}
+    });
+    state.micStream = null;
+  }
+}
+
+function stopSpeechRecognition() {
+  if (!state.recognition) return;
+  const recognition = state.recognition;
+  state.recognition = null;
+  try {
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    recognition.stop();
+  } catch {}
+}
+
+function shouldFallbackFromSpeechError(error) {
+  return ["network", "service-not-allowed", "language-not-supported", "audio-capture"].includes(String(error || ""));
+}
+
+async function transcribeRecordedVoice() {
+  if (state.finalizingVoiceCapture) return;
+  state.finalizingVoiceCapture = true;
+  const chunks = state.recordedChunks.slice();
+  const sampleRate = state.recordingSampleRate || state.audioCtx?.sampleRate || 48000;
+  cleanupVoiceCaptureResources();
+  state.voiceFallbackActive = false;
+  state.listening = false;
+  setFridayMode("thinking");
+  updateChips();
+
+  try {
+    if (!chunks.length) {
+      throw new Error("I didn't catch any audio.");
+    }
+
+    const samples = concatFloat32Arrays(chunks);
+    const wavBuffer = encodeWavBuffer(samples, sampleRate);
+    const audioBase64 = arrayBufferToBase64(wavBuffer);
+
+    state.transcribing = true;
+    updateTranscript("Transcribing your voice...", true);
+    updateChips();
+
+    const result = await apiPost("/api/transcribe", {
+      audio_base64: audioBase64,
+    });
+
+    const text = String(result.text || "").trim();
+    if (!text) {
+      throw new Error(result.error || "I couldn't understand that.");
+    }
+
+    updateTranscript(text, false);
+    await handleVoiceInput(text);
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "Voice transcription failed.");
+  } finally {
+    state.transcribing = false;
+    state.finalizingVoiceCapture = false;
+    setFridayMode(state.listening ? "listening" : "idle");
+    updateChips();
+  }
+}
+
+async function startVoiceFallbackCapture(reason = "") {
+  if (state.voiceFallbackActive || state.finalizingVoiceCapture) return;
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showError("Microphone capture is not available in this browser.");
+    return;
+  }
+
+  try {
+    initAudioContext();
+    resumeAudioContext();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+
+    const ctx = state.audioCtx;
+    if (!ctx) throw new Error("Audio context is unavailable.");
+
+    cleanupVoiceCaptureResources();
+
+    state.micStream = stream;
+    state.micContext = ctx;
+    state.recordedChunks = [];
+    state.recordingSampleRate = ctx.sampleRate || 48000;
+    state.recordingStartedAt = Date.now();
+    state.recordingLastVoiceAt = Date.now();
+    state.recordingHeardVoice = false;
+    state.voiceFallbackActive = true;
+    state.listening = true;
+    state.transcribing = false;
+    state.finalizingVoiceCapture = false;
+
+    const source = ctx.createMediaStreamSource(stream);
+    const processor = ctx.createScriptProcessor(4096, 1, 1);
+    const silentGain = ctx.createGain();
+    silentGain.gain.value = 0;
+
+    processor.onaudioprocess = (event) => {
+      const input = event.inputBuffer.getChannelData(0);
+      if (!input || !input.length) return;
+
+      const chunk = new Float32Array(input.length);
+      chunk.set(input);
+      state.recordedChunks.push(chunk);
+
+      const rms = computeRms(chunk);
+      state.audioLevel = clamp(rms * 14, 0, 1);
+      if (rms > 0.012) {
+        state.recordingHeardVoice = true;
+        state.recordingLastVoiceAt = Date.now();
+      }
+    };
+
+    source.connect(processor);
+    processor.connect(silentGain);
+    silentGain.connect(ctx.destination);
+
+    state.micSource = source;
+    state.micProcessor = processor;
+    state.micAnalyser = silentGain;
+
+    stopVoiceFallbackTimer();
+    state.voiceFallbackSilenceTimer = setInterval(() => {
+      if (!state.voiceFallbackActive || state.finalizingVoiceCapture) return;
+      const elapsed = Date.now() - state.recordingStartedAt;
+      const silence = Date.now() - state.recordingLastVoiceAt;
+      if (state.recordingHeardVoice && elapsed > 850 && silence > 1250) {
+        void transcribeRecordedVoice();
+      }
+    }, 250);
+
+    setFridayMode("listening");
+    updateChips();
+    updateTranscript("Microphone capture armed. Speak now.", true);
+    showToast("Voice", reason ? "Browser speech failed. Using microphone transcription instead." : "Microphone capture armed. Speak now.");
+  } catch (err) {
+    cleanupVoiceCaptureResources();
+    state.voiceFallbackActive = false;
+    state.listening = false;
+    setFridayMode("idle");
+    updateChips();
+    showError(err instanceof Error ? err.message : "Failed to start microphone capture.");
+  }
 }
 
 function encodeWavBuffer(samples, sampleRate) {
@@ -424,7 +605,13 @@ function voiceSummaryText() {
   const profile = VOICE_PROFILES[state.voiceProfile] || VOICE_PROFILES.friday;
   const ownerName = currentState().owner_name || currentState().owner_profile?.name || "Kenan Novruzov";
   const voice = state.selectedVoice ? `Voice: ${state.selectedVoice.name}` : "Browser voice ready.";
-  const capture = state.listening ? (state.transcribing ? "Transcribing microphone input." : "Microphone capture armed.") : "Microphone capture ready.";
+  const capture = state.transcribing
+    ? "Transcribing microphone input."
+    : state.voiceFallbackActive
+      ? "Microphone capture armed."
+      : state.listening
+        ? "Browser speech recognition armed."
+        : "Microphone capture ready.";
   return `${voice} | Profile: ${profile.label} | ${capture} Boss: ${ownerName}.`;
 }
 
@@ -1303,17 +1490,21 @@ async function toggleVoice() {
   else startListening();
 }
 
-function startListening() {
+async function startListening() {
+  if (state.listening || state.voiceFallbackActive || state.finalizingVoiceCapture) return;
+
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    showError("Voice recognition is not supported in this browser.");
-    state.listening = false;
-    setFridayMode("idle");
-    updateChips();
+    await startVoiceFallbackCapture("speech recognition is not supported");
     return;
   }
 
   try {
+    stopSpeechRecognition();
+    cleanupVoiceCaptureResources();
+    state.voiceFallbackActive = false;
+    state.transcribing = false;
+    state.finalizingVoiceCapture = false;
     state.recognition = new SpeechRecognition();
     state.recognition.continuous = true;
     state.recognition.interimResults = true;
@@ -1329,6 +1520,15 @@ function startListening() {
       if (final) { updateTranscript(final, false); handleVoiceInput(final); }
     };
     state.recognition.onerror = (e) => {
+      const error = e?.error || "";
+      if (shouldFallbackFromSpeechError(error)) {
+        stopSpeechRecognition();
+        state.listening = false;
+        setFridayMode("idle");
+        updateChips();
+        void startVoiceFallbackCapture(`browser recognition error: ${error}`);
+        return;
+      }
       if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
         showError(`Voice error: ${e.error}`);
       }
@@ -1349,15 +1549,25 @@ function startListening() {
     state.recognition = null;
     setFridayMode("idle");
     updateChips();
-    showError(err instanceof Error ? err.message : "Failed to start voice recognition.");
+    const message = err instanceof Error ? err.message : "Failed to start voice recognition.";
+    if (String(message).toLowerCase().includes("not-allowed")) {
+      showError("Microphone permission is blocked. Allow microphone access and try again.");
+      return;
+    }
+    await startVoiceFallbackCapture(`browser recognition failed: ${message}`);
   }
 }
 
 function stopListening() {
+  if (state.voiceFallbackActive || state.finalizingVoiceCapture) {
+    void transcribeRecordedVoice();
+    return;
+  }
   state.listening = false;
   setFridayMode("idle");
   updateChips();
-  if (state.recognition) { try { state.recognition.stop(); } catch {} state.recognition = null; }
+  stopSpeechRecognition();
+  cleanupVoiceCaptureResources();
 }
 
 async function handleVoiceInput(text) {
