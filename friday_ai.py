@@ -37,12 +37,6 @@ GEMINI_BASE_URL = os.getenv("GEMINI_BASE_URL", "").strip()
 _API_BASE_URL = GEMINI_BASE_URL.rstrip("/") if GEMINI_BASE_URL else "https://generativelanguage.googleapis.com/v1"
 _RESPONSES_URL = f"{_API_BASE_URL}/responses"
 _TRANSCRIPTION_URL = f"{_API_BASE_URL}/audio/transcriptions"
-print("========== ENV DEBUG ==========")
-print("GEMINI_API_KEY exists:", "GEMINI_API_KEY" in os.environ)
-print("GEMINI_API_KEY value:", repr(os.getenv("GEMINI_API_KEY")))
-print("GEMINI_BASE_URL value:", repr(GEMINI_BASE_URL))
-print("================================")
-
 SUPPORTED_MODELS = (
     "gemini-2.5-flash",
     "gemini-2.5-pro",
@@ -58,22 +52,20 @@ DEFAULT_TRANSCRIPTION_MODEL = ""
 
 # ===== GEMINI API KEY POOL =====
 
+# Keep secrets in the backend environment. Numbered keys provide ten explicit
+# failover slots; the primary key is used as a one-key fallback.
 GEMINI_API_KEYS = []
-
 for i in range(1, 11):
     key = os.getenv(f"GEMINI_API_KEY_{i}", "").strip()
-    if key:
+    if key and key not in GEMINI_API_KEYS:
         GEMINI_API_KEYS.append(key)
 
-CURRENT_KEY_INDEX = 0
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-if not GEMINI_API_KEYS and GEMINI_API_KEY:
-    GEMINI_API_KEYS.append(GEMINI_API_KEY)
+if not GEMINI_API_KEYS:
+    primary_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if primary_key:
+        GEMINI_API_KEYS.append(primary_key)
 
-print("=" * 50)
-print("Gemini API Keys Loaded:", len(GEMINI_API_KEYS))
-print("Current Key:", CURRENT_KEY_INDEX + 1)
-print("=" * 50)
+CURRENT_KEY_INDEX = 0
 
 if not GEMINI_API_KEYS:
     print("WARNING: No Gemini API keys found. FRIDAY will run in fallback mode until an API key is configured.")
@@ -142,6 +134,18 @@ def resolve_transcription_model(model: str | None = None) -> str:
 
 def gemini_ready() -> bool:
     return len(GEMINI_API_KEYS) > 0 and genai is not None
+
+
+def gemini_status() -> dict[str, Any]:
+    """Return safe connection diagnostics without exposing API key material."""
+    return {
+        "client_available": genai is not None,
+        "configured_key_count": len(GEMINI_API_KEYS),
+        "max_key_count": 10,
+        "active_key_slot": CURRENT_KEY_INDEX + 1 if GEMINI_API_KEYS else None,
+        "configured_slots": list(range(1, len(GEMINI_API_KEYS) + 1)),
+        "connected": gemini_ready(),
+    }
 
 
 def _extract_transcript_text(data: Any) -> str | None:

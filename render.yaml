@@ -8,9 +8,27 @@ services:
     envVars:
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY_1
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY_3
+        sync: false
+      - key: GEMINI_API_KEY_4
+        sync: false
+      - key: GEMINI_API_KEY_5
+        sync: false
+      - key: GEMINI_API_KEY_6
+        sync: false
+      - key: GEMINI_API_KEY_7
+        sync: false
+      - key: GEMINI_API_KEY_8
+        sync: false
+      - key: GEMINI_API_KEY_9
+        sync: false
+      - key: GEMINI_API_KEY_10
+        sync: false
       - key: FRIDAY_AI_MODEL
-        value: gpt-5
-      - key: FRIDAY_TRANSCRIBE_MODEL
-        value: gpt-4o-transcribe
+        value: gemini-2.5-flash
       - key: FRIDAY_AUTO_OPEN
         value: "0"

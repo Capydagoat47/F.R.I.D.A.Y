@@ -30,7 +30,7 @@ from xml.etree import ElementTree
 from friday_ai import gemini_ready
 import requests
 
-from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, gemini_ready, request_json, resolve_model, transcribe_audio_bytes
+from friday_ai import DEFAULT_MODEL, SUPPORTED_MODELS, generate_reply, gemini_ready, gemini_status, request_json, resolve_model, transcribe_audio_bytes
 print("SERVER IMPORTED FRIDAY_AI SUCCESSFULLY")
 HOST = os.getenv("FRIDAY_HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "5000"))
@@ -277,6 +277,7 @@ def public_state() -> dict[str, Any]:
 
     # Gemini cloud status
     payload["cloud_ready"] = gemini_ready()
+    payload["ai_connection"] = gemini_status()
 
     payload["state_url"] = LOCAL_URL
 
@@ -2046,6 +2047,7 @@ class FridayHandler(BaseHTTPRequestHandler):
                     "name": STATE.get("name", "FRIDAY"),
                     "model": STATE.get("model", DEFAULT_MODEL),
                     "cloud_ready": gemini_ready(),
+                    "ai_connection": gemini_status(),
                     "wake_word": STATE.get("wake_word", "hey friday"),
                     "timestamp": now_iso(),
                 }
