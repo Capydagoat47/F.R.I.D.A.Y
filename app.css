@@ -1018,11 +1018,28 @@ body[data-friday-mode="thinking"] .orb-title {
 .dock {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  gap: 12px;
   padding: 16px 18px;
-  align-items: center;
+  align-items: stretch;
   animation: panelSlideIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
   opacity: 0;
+}
+
+.dock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dock-head > span:first-child {
+  color: rgba(248, 251, 255, 0.94);
+  letter-spacing: 0.22em;
+  font-family: var(--font-hud);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.82rem;
 }
 
 .dock-command {
@@ -1032,7 +1049,14 @@ body[data-friday-mode="thinking"] .orb-title {
 }
 
 .dock-actions {
-  display: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dock-actions button {
+  white-space: nowrap;
 }
 
 .dock-command button {
@@ -1612,10 +1636,16 @@ body[data-friday-mode="thinking"] .orb-title {
     padding: 14px;
     border-radius: 24px;
   }
+  .dock-head {
+    align-items: flex-start;
+  }
   .dock-command {
     grid-template-columns: 1fr auto auto;
   }
-  .dock-command button, .dock-command input {
+  .dock-actions {
+    justify-content: flex-start;
+  }
+  .dock-command button, .dock-command input, .dock-actions button {
     min-height: 52px;
     width: 100%;
     font-size: 0.7rem;

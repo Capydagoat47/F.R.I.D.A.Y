@@ -304,7 +304,8 @@ def public_state() -> dict[str, Any]:
 def smart_capabilities() -> str:
     return (
         "I can chat, remember facts and notes, track tasks, plan multi-step commands, open safe web links, search the web, "
-        "set timers and reminders, switch AI models, report telemetry, run simulated HUD modes, and keep owner context ready."
+        "set timers and reminders, switch AI models, report telemetry, run simulated HUD modes, keep owner context ready, "
+        "and help with coding, debugging, refactoring, code review, and test writing."
     )
 
 

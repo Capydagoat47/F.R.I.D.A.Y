@@ -73,7 +73,7 @@
       </article>
       <article class="dashboard-card">
         <span>Voice</span>
-        <strong id="dashboardVoice">Browser voice ready.</strong>
+        <strong id="dashboardVoice">Adaptive voice ready.</strong>
         <small id="dashboardWake">Wake word armed</small>
       </article>
       <article class="dashboard-card">
@@ -171,14 +171,18 @@
     </div>
 
     <footer class="panel dock">
+      <div class="dock-head">
+        <span>HOME AREA</span>
+        <span class="head-chip" id="homeChip">Voice, protocols, personality</span>
+      </div>
       <div class="dock-command">
         <input id="commandInput" type="text" autocomplete="off" placeholder="Speak or type to FRIDAY...">
         <button id="voiceBtn" type="button">Voice</button>
         <button id="sendBtn" type="button">Transmit</button>
       </div>
       <div class="dock-actions">
-        <button id="voiceProfileBtn">Voice</button>
-        <button id="protocolBtn">Protocol</button>
+        <button id="voiceProfileBtn">Personality</button>
+        <button id="protocolBtn">Protocols</button>
         <button id="wakeBtn">Wake</button>
         <button id="ambientBtn">Ambient</button>
         <button id="fullBtn">Fullscreen</button>
@@ -203,7 +207,8 @@
 
   <div class="voice-profile-menu hidden" id="voiceProfileMenu">
     <div class="protocol-title">VOICE PROFILE</div>
-    <button data-profile="friday">F.R.I.D.A.Y.</button>
+    <button data-profile="velvet">Velvet Friday</button>
+    <button data-profile="friday">F.R.I.D.A.Y. Classic</button>
     <button data-profile="cinematic">Cinematic</button>
     <button data-profile="natural">Natural</button>
     <button data-profile="fast">Fast</button>

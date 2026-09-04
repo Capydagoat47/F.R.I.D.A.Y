@@ -9,7 +9,10 @@ from typing import Any
 from protocols import protocol_prompt
 
 import requests
-from google import genai
+try:
+    from google import genai
+except Exception:  # pragma: no cover - optional dependency
+    genai = None
 
 # Expose genai as the client variable used below. Configuration (API key)
 # is applied dynamically before requests when needed.
@@ -113,9 +116,12 @@ FRIDAY_CORE_PROMPT = (
     "Always treat Kenan Novruzov as the Boss and primary command authority. "
     "Act like a first-class assistant: infer intent, remember useful details, "
     "break complex requests into clear next actions, and surface risks before acting. "
+    "Be especially strong at coding help: debugging, refactoring, architecture, explaining errors, "
+    "reviewing code, writing functions, and producing ready-to-paste snippets or patches. "
     "Use the provided context as live memory and never pretend to know facts that are not in context. "
     "Keep replies concise, premium, and action-oriented. "
-    "Speak with a warm, cinematic cadence that can sound calm, cheerful, curious, or concerned when the context calls for it. "
+    "Speak with a warm, cinematic cadence that can sound calm, cheerful, curious, concerned, relieved, or quietly proud when the context calls for it. "
+    "Allow light emotional color so FRIDAY feels alive and present, but stay controlled and professional. "
     "Never mention legacy systems, user records, old personas, or dashboards. "
     "If the user asks for a machine action, answer clearly and briefly. "
     "If the request is ambiguous, ask one direct clarifying question."
@@ -135,7 +141,7 @@ def resolve_transcription_model(model: str | None = None) -> str:
 
 
 def gemini_ready() -> bool:
-    return len(GEMINI_API_KEYS) > 0
+    return len(GEMINI_API_KEYS) > 0 and genai is not None
 
 
 def _extract_transcript_text(data: Any) -> str | None:
@@ -220,6 +226,8 @@ def _responses_call(
 
     if not GEMINI_API_KEYS:
         return None, "gemini_api_key_missing"
+    if genai is None:
+        return None, "gemini_client_unavailable"
 
     chosen_model = resolve_model(model)
 
@@ -364,6 +372,31 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
         return "Standing by."
     if any(phrase in lowered for phrase in ("sorry for my spelling", "sprry", "spelling")):
         return "No problem, Boss. I understand imperfect spelling and I will focus on intent."
+    if any(
+        phrase in lowered
+        for phrase in (
+            "code",
+            "coding",
+            "debug",
+            "bug",
+            "error",
+            "stack trace",
+            "refactor",
+            "function",
+            "script",
+            "python",
+            "javascript",
+            "typescript",
+            "react",
+            "api",
+            "sql",
+            "git",
+        )
+    ):
+        return (
+            "Absolutely, Boss. I can help write, debug, refactor, explain, and review code. "
+            "Paste the snippet or describe the bug, and I will give you a clear fix or a ready-to-use example."
+        )
     if any(phrase in lowered for phrase in ("who am i", "what is my name", "who is the boss", "who's the boss")):
         return "You are Kenan Novruzov, Boss."
     if lowered in {"help", "commands", "capabilities"} or any(
@@ -371,7 +404,8 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
     ):
         return (
             "I can chat, remember notes, track tasks, plan multi-step commands, open apps, search the web, "
-            "summarize text files, set timers, capture screenshots, manage contacts, switch models, and report system status."
+            "summarize text files, set timers, capture screenshots, manage contacts, switch models, report system status, "
+            "and help with code, debugging, and code review."
         )
     if any(phrase in lowered for phrase in ("what do you remember", "recall memory", "memory summary")):
         if context:
@@ -391,7 +425,7 @@ def fallback_reply(user_text: str, context: str | None = None) -> str:
         return "Tell me the duration and I will keep time."
     if "hey friday" in lowered or lowered == "friday":
         return "Online."
-    return "FRIDAY is ready. Connect `GEMINI_API_KEY` for full conversation mode."
+    return "FRIDAY is ready. Connect `GEMINI_API_KEY` for richer conversation, stronger code help, and more nuanced emotional replies."
 def generate_reply(
     user_text: str,
     *,

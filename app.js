@@ -12,7 +12,7 @@ const state = {
   transcript: "",
   voices: [],
   selectedVoice: null,
-  voiceProfile: "friday",
+  voiceProfile: "velvet",
   recognition: null,
   micStream: null,
   micContext: null,
@@ -70,11 +70,12 @@ const QUICK_COMMANDS = [
 ];
 
 const VOICE_PROFILES = {
-  friday:   { rate: 0.92, pitch: 1.06, volume: 1.0, label: "F.R.I.D.A.Y." },
-  cinematic:{ rate: 0.90, pitch: 1.02, volume: 1.0, label: "Cinematic" },
+  friday:   { rate: 0.90, pitch: 1.04, volume: 1.0, label: "F.R.I.D.A.Y. Classic" },
+  velvet:   { rate: 0.88, pitch: 1.00, volume: 1.0, label: "Velvet Friday" },
+  cinematic:{ rate: 0.89, pitch: 0.99, volume: 1.0, label: "Cinematic" },
   natural:  { rate: 1.00, pitch: 1.00, volume: 1.0, label: "Natural" },
-  fast:     { rate: 1.15, pitch: 1.05, volume: 1.0, label: "Fast" },
-  jarvis:   { rate: 0.85, pitch: 0.95, volume: 1.0, label: "J.A.R.V.I.S." },
+  fast:     { rate: 1.10, pitch: 1.03, volume: 1.0, label: "Fast" },
+  jarvis:   { rate: 0.84, pitch: 0.94, volume: 1.0, label: "J.A.R.V.I.S." },
 };
 
 const EMOTION_PROFILES = {
@@ -179,6 +180,18 @@ function inferEmotion(text, fallback = "calm") {
     if (keywords.some((keyword) => value.includes(keyword))) return emotion;
   }
   return fallback;
+}
+
+function normalizeSpeechText(text) {
+  return String(text || "")
+    .replace(/```[\s\S]*?```/g, " code block ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\s+/g, " ")
+    .replace(/([.!?;:])\s+/g, "$1  ")
+    .replace(/,\s+/g, ", ")
+    .replace(/\b(Boss|sir|ma'am)\b/gi, (match) => match.toLowerCase())
+    .trim();
 }
 
 function setEmotion(emotionKey) {
@@ -607,30 +620,53 @@ function stopDrone() {
 }
 
 // ─── Smart Voice Selection ───
-function scoreVoice(voice) {
+function scoreVoice(voice, profileKey = state.voiceProfile) {
   let score = 0;
   const name = voice.name.toLowerCase();
   const lang = voice.lang.toLowerCase();
 
-  // Prefer female voices
-  if (name.includes("female")) score += 20;
+  const warmProfile = profileKey === "friday" || profileKey === "velvet" || profileKey === "cinematic";
+  const energeticProfile = profileKey === "fast";
+  const deeperProfile = profileKey === "jarvis";
+
+  // Prefer natural, high-quality voices.
+  if (name.includes("female")) score += 18;
   if (name.includes("zira") || name.includes("hazel") || name.includes("samantha") ||
       name.includes("victoria") || name.includes("karen") || name.includes("moira") ||
-      name.includes("tessa") || name.includes("catherine")) score += 30;
+      name.includes("tessa") || name.includes("catherine")) score += 28;
+  if (name.includes("neural") || name.includes("natural") || name.includes("enhanced") ||
+      name.includes("premium") || name.includes("studio") || name.includes("wavenet") ||
+      name.includes("online")) score += 14;
 
   // Prefer British / Irish / Australian English (closer to Kerry Condon)
-  if (lang.includes("en-gb") || lang.includes("en-ie") || lang.includes("en-au")) score += 15;
+  if (lang.includes("en-gb") || lang.includes("en-ie") || lang.includes("en-au")) score += 16;
   if (name.includes("uk") || name.includes("british") || name.includes("english")) score += 10;
+  if (lang.startsWith("en-")) score += 3;
 
-  // Deprioritize male voices and low-quality voices
-  if (name.includes("male")) score -= 15;
-  if (name.includes("microsoft") && !name.includes("zira") && !name.includes("hazel")) score -= 5;
+  // Deprioritize robotic or low-quality voices.
+  if (name.includes("male")) score -= 12;
+  if (name.includes("robot") || name.includes("default") || name.includes("compact") ||
+      name.includes("novice") || name.includes("old")) score -= 10;
+  if (name.includes("microsoft") && !name.includes("zira") && !name.includes("hazel")) score -= 3;
 
   // Google voices are usually high quality
   if (name.includes("google")) score += 8;
 
   // Prefer local voices (lower latency)
   if (voice.localService) score += 5;
+
+  if (voice.default) score -= 2;
+
+  if (warmProfile) {
+    if (name.includes("female") || name.includes("zira") || name.includes("hazel") || name.includes("samantha")) score += 8;
+    if (lang.includes("en-gb") || lang.includes("en-ie")) score += 6;
+  } else if (energeticProfile) {
+    if (name.includes("google") || name.includes("online") || name.includes("wavenet")) score += 6;
+    if (voice.localService) score += 2;
+  } else if (deeperProfile) {
+    if (name.includes("male") || name.includes("alex") || name.includes("daniel") || name.includes("arthur")) score += 10;
+    if (name.includes("female")) score -= 4;
+  }
 
   return score;
 }
@@ -643,13 +679,19 @@ function selectBestVoice() {
   state.voices = voices;
 
   // Try exact name matches first
-  for (const preferred of VOICE_PRIORITY) {
+  const preferredSets = state.voiceProfile === "jarvis"
+    ? ["Daniel", "Alex", "Arthur", "Google US English", "Microsoft David", "Microsoft Mark"]
+    : state.voiceProfile === "fast"
+      ? ["Google US English", "Google UK English Female", "Samantha", "Victoria", "Zira"]
+      : ["Hazel", "Samantha", "Victoria", "Karen", "Moira", "Tessa", "Catherine", "Google UK English Female", "Google US English Female"];
+
+  for (const preferred of [...preferredSets, ...VOICE_PRIORITY]) {
     const match = voices.find(v => v.name.toLowerCase().includes(preferred.toLowerCase()));
     if (match) { state.selectedVoice = match; return match; }
   }
 
   // Fallback to scoring
-  const scored = voices.map(v => ({ voice: v, score: scoreVoice(v) }));
+  const scored = voices.map(v => ({ voice: v, score: scoreVoice(v, state.voiceProfile) }));
   scored.sort((a, b) => b.score - a.score);
 
   state.selectedVoice = scored[0]?.voice || voices[0];
@@ -670,28 +712,20 @@ function finalizeSpeech(text, options) {
   const emotionKey = options?.emotionKey || inferEmotion(text, state.emotion);
   setEmotion(emotionKey);
   const emotionProfile = EMOTION_PROFILES[emotionKey] || EMOTION_PROFILES.calm;
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(normalizeSpeechText(text));
 
   const speakerProfile = state.voiceProfile === "friday"
     ? { rate: 0.92, pitch: 1.04, volume: 1.0 }
+    : state.voiceProfile === "velvet"
+    ? { rate: 0.88, pitch: 1.0, volume: 1.0 }
     : profile;
 
   utterance.rate = options?.mood?.rate ?? emotionProfile.rate ?? speakerProfile.rate;
   utterance.pitch = options?.mood?.pitch ?? emotionProfile.pitch ?? speakerProfile.pitch;
   utterance.volume = options?.mood?.volume ?? emotionProfile.volume ?? profile.volume;
+  utterance.lang = state.selectedVoice?.lang || "en-GB";
 
   if (state.selectedVoice) utterance.voice = state.selectedVoice;
-
-  // Add slight pauses for punctuation (cinematic cadence)
-  const enhancedText = String(text)
-    .replace(/\s+/g, " ")
-    .replace(/\.\s+/g, ".  ")
-    .replace(/,\s+/g, ", ")
-    .replace(/\?\s+/g, "?  ")
-    .replace(/!\s+/g, "!  ")
-    .replace(/\b(Boss|sir|ma'am)\b/gi, (match) => match.toLowerCase())
-    .trim();
-  utterance.text = enhancedText;
 
   utterance.onstart = () => {
     state.speaking = true;
@@ -724,6 +758,7 @@ function finalizeSpeech(text, options) {
 function setVoiceProfile(profileKey) {
   if (!VOICE_PROFILES[profileKey]) return;
   state.voiceProfile = profileKey;
+  selectBestVoice();
   updateChips();
   showSuccess("Voice Profile", `Switched to ${VOICE_PROFILES[profileKey].label} mode.`);
 
